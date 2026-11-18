@@ -1,7 +1,8 @@
 -- Estimação com erro-padrão por linearização de Taylor (Estrato/UPA), PNAD Contínua do município do Rio.
 -- Portável para DuckDB 1.4 (motor do DuckDB-WASM 1.32) e DuckDB 2.0. Testado nos dois (pipeline/pnad.py e
 -- validacao_pnad.md). Requer as views pnad_trimestral, pnad_visita1 e pnad_visita5 (uma por tabela do
--- manifest_pnad.json).
+-- manifest_pnad.json), criadas ANTES de rodar este arquivo: o DuckDB confere na criação da macro que a tabela
+-- citada em query_table('pnad_trimestral') existe.
 --
 -- Método
 --   * Estimativa: totais ponderados pelo peso calibrado (V1028 no trimestral, V1032 nas visitas anuais).

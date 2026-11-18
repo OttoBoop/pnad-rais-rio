@@ -195,6 +195,164 @@
     }
    ]
   },
+  "pnad_visita1": {
+   "titulo": "PNAD Contínua anual, 1ª visita",
+   "fonte": "IBGE",
+   "peso": "V1032",
+   "estrato": "Estrato",
+   "upa": "UPA",
+   "periodo": [
+    "Ano"
+   ],
+   "dicionario": "dados/dic/pnad_visita1.json",
+   "arquivos": [
+    {
+     "ano": 2012,
+     "url": "dados/pnad/anual/pnad_visita1_2012.zip",
+     "bytes": 504776,
+     "linhas": 10116
+    },
+    {
+     "ano": 2013,
+     "url": "dados/pnad/anual/pnad_visita1_2013.zip",
+     "bytes": 505805,
+     "linhas": 10192
+    },
+    {
+     "ano": 2014,
+     "url": "dados/pnad/anual/pnad_visita1_2014.zip",
+     "bytes": 526627,
+     "linhas": 10733
+    },
+    {
+     "ano": 2015,
+     "url": "dados/pnad/anual/pnad_visita1_2015.zip",
+     "bytes": 547716,
+     "linhas": 10536
+    },
+    {
+     "ano": 2016,
+     "url": "dados/pnad/anual/pnad_visita1_2016.zip",
+     "bytes": 595110,
+     "linhas": 10071
+    },
+    {
+     "ano": 2017,
+     "url": "dados/pnad/anual/pnad_visita1_2017.zip",
+     "bytes": 620757,
+     "linhas": 10412
+    },
+    {
+     "ano": 2018,
+     "url": "dados/pnad/anual/pnad_visita1_2018.zip",
+     "bytes": 669411,
+     "linhas": 10935
+    },
+    {
+     "ano": 2019,
+     "url": "dados/pnad/anual/pnad_visita1_2019.zip",
+     "bytes": 652130,
+     "linhas": 10448
+    },
+    {
+     "ano": 2022,
+     "url": "dados/pnad/anual/pnad_visita1_2022.zip",
+     "bytes": 556344,
+     "linhas": 8714
+    },
+    {
+     "ano": 2023,
+     "url": "dados/pnad/anual/pnad_visita1_2023.zip",
+     "bytes": 590290,
+     "linhas": 9271
+    },
+    {
+     "ano": 2024,
+     "url": "dados/pnad/anual/pnad_visita1_2024.zip",
+     "bytes": 604016,
+     "linhas": 9267
+    },
+    {
+     "ano": 2025,
+     "url": "dados/pnad/anual/pnad_visita1_2025.zip",
+     "bytes": 563010,
+     "linhas": 8544
+    }
+   ]
+  },
+  "pnad_visita5": {
+   "titulo": "PNAD Contínua anual, 5ª visita",
+   "fonte": "IBGE",
+   "peso": "V1032",
+   "estrato": "Estrato",
+   "upa": "UPA",
+   "periodo": [
+    "Ano"
+   ],
+   "dicionario": "dados/dic/pnad_visita5.json",
+   "arquivos": [
+    {
+     "ano": 2016,
+     "url": "dados/pnad/anual/pnad_visita5_2016.zip",
+     "bytes": 691429,
+     "linhas": 10590
+    },
+    {
+     "ano": 2017,
+     "url": "dados/pnad/anual/pnad_visita5_2017.zip",
+     "bytes": 715402,
+     "linhas": 10729
+    },
+    {
+     "ano": 2018,
+     "url": "dados/pnad/anual/pnad_visita5_2018.zip",
+     "bytes": 737559,
+     "linhas": 10849
+    },
+    {
+     "ano": 2019,
+     "url": "dados/pnad/anual/pnad_visita5_2019.zip",
+     "bytes": 735834,
+     "linhas": 10613
+    },
+    {
+     "ano": 2020,
+     "url": "dados/pnad/anual/pnad_visita5_2020.zip",
+     "bytes": 519211,
+     "linhas": 9104
+    },
+    {
+     "ano": 2021,
+     "url": "dados/pnad/anual/pnad_visita5_2021.zip",
+     "bytes": 425469,
+     "linhas": 7279
+    },
+    {
+     "ano": 2022,
+     "url": "dados/pnad/anual/pnad_visita5_2022.zip",
+     "bytes": 662206,
+     "linhas": 9369
+    },
+    {
+     "ano": 2023,
+     "url": "dados/pnad/anual/pnad_visita5_2023.zip",
+     "bytes": 623824,
+     "linhas": 9553
+    },
+    {
+     "ano": 2024,
+     "url": "dados/pnad/anual/pnad_visita5_2024.zip",
+     "bytes": 641937,
+     "linhas": 9607
+    },
+    {
+     "ano": 2025,
+     "url": "dados/pnad/anual/pnad_visita5_2025.zip",
+     "bytes": 609524,
+     "linhas": 9189
+    }
+   ]
+  },
   "pnad_deflatores": {
    "titulo": "Deflatores da PNAD Contínua trimestral (UF 33)",
    "fonte": "IBGE",
@@ -227,7 +385,7 @@
     "Trimestre"
    ],
    "dicionario": null,
-   "nota": "CO1/CO1e (habitual/efetivo do trabalho) e CO2/CO2e/CO3 (outras fontes e domiciliar), conforme deflacionamento_PNADC_anual_visita.txt do IBGE. Junte por Ano, Trimestre e UF.",
+   "nota": "Conforme deflacionamento_PNADC_anual_visita.txt do IBGE: CO1 (rendimento habitual) e CO1e (efetivo) levam a preços médios do próprio ano; CO2 (habitual) e CO2e (efetivo), a preços médios do último ano do arquivo; CO3, a preços médios do último ano, para a linha de US$ 1,90 do ODS 1.1.1. Rendimento real = rendimento x deflator. Junte por Ano, Trimestre e UF.",
    "arquivos": [
     {
      "ano": null,
