@@ -115,11 +115,35 @@
      "linhas": 3353392
     },
     {
+     "ano": 2023,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2023.parquet",
+     "bytes": 115715580,
+     "linhas": 3420515
+    },
+    {
      "ano": 2024,
      "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2024.parquet",
      "bytes": 115284269,
      "linhas": 3532298,
      "provisorio": true
+    }
+   ]
+  },
+  "rais_vinculos_2023_legado": {
+   "titulo": "RAIS Vínculos 2023 (arquivo Legado)",
+   "fonte": "MTE/PDET",
+   "peso": null,
+   "periodo": [
+    "ano"
+   ],
+   "ativo": "ind_vinculo_ativo_31_12",
+   "dicionario": "dados/dic/rais_vinculos.json",
+   "arquivos": [
+    {
+     "ano": 2023,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2023_legado.parquet",
+     "bytes": 101076600,
+     "linhas": 3159997
     }
    ]
   },
