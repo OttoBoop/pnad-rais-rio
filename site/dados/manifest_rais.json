@@ -125,6 +125,12 @@
      "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2024.parquet",
      "bytes": 115646779,
      "linhas": 3532298
+    },
+    {
+     "ano": 2025,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2025.parquet",
+     "bytes": 120943596,
+     "linhas": 3649622
     }
    ]
   },
