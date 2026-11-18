@@ -1,0 +1,215 @@
+{
+ "gerado_em": "2026-11-18",
+ "parcial": true,
+ "tabelas": {
+  "rais_vinculos": {
+   "titulo": "RAIS Vínculos",
+   "fonte": "MTE/PDET",
+   "peso": null,
+   "periodo": [
+    "ano"
+   ],
+   "ativo": "ind_vinculo_ativo_31_12",
+   "dicionario": "dados/dic/rais_vinculos.json",
+   "arquivos": [
+    {
+     "ano": 2006,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2006.parquet",
+     "bytes": 36244985,
+     "linhas": 2657675
+    },
+    {
+     "ano": 2007,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2007.parquet",
+     "bytes": 39211581,
+     "linhas": 2952284
+    },
+    {
+     "ano": 2008,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2008.parquet",
+     "bytes": 40782097,
+     "linhas": 3063417
+    },
+    {
+     "ano": 2009,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2009.parquet",
+     "bytes": 41060895,
+     "linhas": 3164471
+    },
+    {
+     "ano": 2010,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2010.parquet",
+     "bytes": 46131201,
+     "linhas": 3583366
+    },
+    {
+     "ano": 2011,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2011.parquet",
+     "bytes": 48090031,
+     "linhas": 3652786
+    },
+    {
+     "ano": 2012,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2012.parquet",
+     "bytes": 50025209,
+     "linhas": 3785058
+    },
+    {
+     "ano": 2013,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2013.parquet",
+     "bytes": 51305490,
+     "linhas": 3870772
+    },
+    {
+     "ano": 2014,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2014.parquet",
+     "bytes": 52811367,
+     "linhas": 3990653
+    },
+    {
+     "ano": 2024,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2024.parquet",
+     "bytes": 115284269,
+     "linhas": 3532298,
+     "provisorio": true
+    }
+   ]
+  },
+  "rais_estab": {
+   "titulo": "RAIS Estabelecimentos",
+   "fonte": "MTE/PDET",
+   "peso": null,
+   "periodo": [
+    "ano"
+   ],
+   "dicionario": "dados/dic/rais_estab.json",
+   "arquivos": [
+    {
+     "ano": 2006,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2006.parquet",
+     "bytes": 553441,
+     "linhas": 226670
+    },
+    {
+     "ano": 2007,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2007.parquet",
+     "bytes": 591798,
+     "linhas": 230921
+    },
+    {
+     "ano": 2008,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2008.parquet",
+     "bytes": 614395,
+     "linhas": 237936
+    },
+    {
+     "ano": 2009,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2009.parquet",
+     "bytes": 629687,
+     "linhas": 245344
+    },
+    {
+     "ano": 2010,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2010.parquet",
+     "bytes": 650541,
+     "linhas": 251683
+    },
+    {
+     "ano": 2011,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2011.parquet",
+     "bytes": 677515,
+     "linhas": 260561
+    },
+    {
+     "ano": 2012,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2012.parquet",
+     "bytes": 672921,
+     "linhas": 263549
+    },
+    {
+     "ano": 2013,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2013.parquet",
+     "bytes": 710950,
+     "linhas": 271981
+    },
+    {
+     "ano": 2014,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2014.parquet",
+     "bytes": 1497939,
+     "linhas": 275547
+    },
+    {
+     "ano": 2015,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2015.parquet",
+     "bytes": 1476447,
+     "linhas": 277885
+    },
+    {
+     "ano": 2016,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2016.parquet",
+     "bytes": 1511950,
+     "linhas": 277273
+    },
+    {
+     "ano": 2017,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2017.parquet",
+     "bytes": 1501891,
+     "linhas": 277343
+    },
+    {
+     "ano": 2018,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2018.parquet",
+     "bytes": 1493431,
+     "linhas": 275292
+    },
+    {
+     "ano": 2019,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2019.parquet",
+     "bytes": 1449232,
+     "linhas": 270728
+    },
+    {
+     "ano": 2020,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2020.parquet",
+     "bytes": 1467995,
+     "linhas": 278227
+    },
+    {
+     "ano": 2021,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2021.parquet",
+     "bytes": 1500023,
+     "linhas": 288022
+    },
+    {
+     "ano": 2022,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2022.parquet",
+     "bytes": 1134863,
+     "linhas": 245931
+    },
+    {
+     "ano": 2023,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2023.parquet",
+     "bytes": 1539603,
+     "linhas": 350914
+    },
+    {
+     "ano": 2024,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2024.parquet",
+     "bytes": 1676340,
+     "linhas": 378168
+    },
+    {
+     "ano": 2025,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/estabelecimentos/rais_estab_2025.parquet",
+     "bytes": 1674743,
+     "linhas": 377678
+    }
+   ]
+  }
+ },
+ "dicionarios": {
+  "cbo": "dados/dic/cbo.json",
+  "cnae": "dados/dic/cnae.json",
+  "bairros_rj": "dados/dic/bairros_rj.json"
+ }
+}
