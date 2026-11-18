@@ -85,6 +85,12 @@
      "linhas": 3159873
     },
     {
+     "ano": 2018,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2018.parquet",
+     "bytes": 113439134,
+     "linhas": 3097279
+    },
+    {
      "ano": 2024,
      "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2024.parquet",
      "bytes": 115284269,
