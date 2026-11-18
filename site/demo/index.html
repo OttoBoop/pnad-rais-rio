@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>PNAD + RAIS do Rio: demonstração</title>
+<style>
+:root{--fundo:#f7f7f5;--cartao:#fff;--texto:#1d1d1b;--suave:#5f5f5a;--linha:#e2e2dc;--destaque:#0b5cad;--barra:#7fa9d6;--alerta:#a15c00;--ruim:#b3261e;--ok:#1e7a3c;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--fundo:#161615;--cartao:#20201f;--texto:#ecece8;--suave:#a4a49d;--linha:#34342f;--destaque:#7fb3ff;--barra:#3f6ea3;--alerta:#f0b45a;--ruim:#ff8a80;--ok:#7bd88f;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fundo);color:var(--texto);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1080px;margin:0 auto;padding:24px 16px 64px}
+h1{font-size:1.6rem;margin:0 0 4px}
+h2{font-size:1.15rem;margin:32px 0 12px}
+p{margin:6px 0}
+.suave{color:var(--suave)}
+.aviso{border-left:3px solid var(--destaque);padding:8px 12px;background:var(--cartao);margin:16px 0;border-radius:4px}
+#status{font-size:.9rem}
+.grade{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+.cartao{background:var(--cartao);border:1px solid var(--linha);border-radius:8px;padding:14px}
+.cartao h3{font-size:1rem;margin:0 0 4px}
+.base{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--suave)}
+button{font:inherit;cursor:pointer;border:1px solid var(--destaque);background:var(--destaque);color:#fff;border-radius:6px;padding:6px 14px}
+button.secundario{background:transparent;color:var(--destaque)}
+button:disabled{opacity:.5;cursor:wait}
+#resultado{margin-top:12px}
+.tabela{overflow-x:auto;border:1px solid var(--linha);border-radius:6px;background:var(--cartao)}
+table{border-collapse:collapse;width:100%;font-size:.88rem;font-variant-numeric:tabular-nums}
+th,td{padding:6px 10px;border-bottom:1px solid var(--linha);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{font-weight:600;background:var(--fundo)}
+.barra{display:inline-block;height:10px;background:var(--barra);border-radius:2px;vertical-align:middle}
+.q-ok{color:var(--ok)}.q-cautela{color:var(--alerta)}.q-ruim{color:var(--ruim)}
+textarea{width:100%;min-height:150px;font:13px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;padding:10px;border:1px solid var(--linha);border-radius:6px;background:var(--cartao);color:var(--texto)}
+.acoes{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin:8px 0}
+details{margin-top:8px}
+pre{white-space:pre-wrap;font:12px/1.4 ui-monospace,Menlo,Consolas,monospace;background:var(--fundo);padding:8px;border-radius:4px;overflow-x:auto}
+code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.88em}
+.legenda{font-size:.8rem;color:var(--suave);margin-top:6px}
+</style>
+</head>
+<body>
+<main>
+<h1>PNAD Contínua + RAIS do município do Rio</h1>
+<p class="suave">Microdados consultados direto no navegador: nada é pré-calculado, e cada consulta roda agora, na sua máquina.</p>
+<div class="aviso">
+<strong>Demonstração.</strong> Aqui há a PNAD Contínua de 2012T1 e 2026T3 (IBGE) e a RAIS Vínculos 2024 inteira do Rio (MTE, 3,5 milhões de vínculos). O laboratório completo, com a PNAD de 2012 a 2026 e a RAIS de 2006 a 2025, construtor de cruzamentos e dicionário, está em construção.
+</div>
+<p id="status" class="suave">Carregando o motor de consulta (DuckDB-WASM, cerca de 7 MB na primeira visita)…</p>
+
+<h2>Consultas prontas</h2>
+<div class="grade" id="prontas"></div>
+
+<div id="resultado"></div>
+
+<h2>SQL livre</h2>
+<p class="suave">Tabelas: <code>pnad_trimestral</code> (PNAD 2012T1 e 2026T3, nomes do IBGE: V2007, VD4002, V1028…), <code>rais_2024</code> (RAIS Vínculos 2024 do Rio) e <code>rotulo(var, cod, nome)</code>. A função <code>pnad_razao(numerador, denominador, grupo, periodo)</code> devolve a estimativa ponderada com erro-padrão, IC 95% e CV. Use Ctrl+Enter para rodar.</p>
+<textarea id="sql" spellcheck="false"></textarea>
+<div class="acoes"><button id="rodar">Rodar SQL</button><span class="suave" id="tempo"></span></div>
+
+<h2>Como ler</h2>
+<p><strong>PNAD</strong>: estimativas ponderadas pelo peso calibrado V1028. O erro-padrão vem por linearização de Taylor sobre o desenho amostral (Estrato e UPA). Na taxa de desocupação, o resultado reproduz o SIDRA/IBGE (tabela 4093, município do Rio): 8,07% contra 8,1% em 2012T1 e 7,05% contra 7,0% em 2026T3, com CVs de 5,2% e 7,2% contra 5,8% e 6,9% publicados. Qualidade: <span class="q-ok">CV até 15%</span>; <span class="q-cautela">CV de 15% a 30%, use com cautela</span>; <span class="q-ruim">CV acima de 30% ou menos de 30 entrevistados, não confiável</span>. São convenções deste site.</p>
+<p><strong>RAIS</strong>: registro administrativo de todos os vínculos formais, sem amostra e sem peso. O município é o do estabelecimento (330455). Um vínculo ativo é um vínculo ativo em 31/12. As remunerações são nominais e médias no ano. O bairro só existe nos vínculos até 2021.</p>
+<p class="suave">Fontes: IBGE, PNAD Contínua (microdados trimestrais); MTE/PDET, RAIS (microdados públicos, não identificados). Código em <a href="https://github.com/OttoBoop/pnad-rais-rio">github.com/OttoBoop/pnad-rais-rio</a>.</p>
+</main>
+
+<script type="module">
+const VERSAO = '1.32.0';
+const RAIS_2024 = 'https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/teste/rais_vinc_2024_rio_rg1000k.parquet';
+const abs = p => new URL(p, location.href).href;
+const PNAD = [abs('dados/pnad_2012t1.zip'), abs('dados/pnad_2026t3.zip')];
+
+const SECAO = `CASE WHEN d<=3 THEN 'A Agropecuária' WHEN d<=9 THEN 'B Extrativas' WHEN d<=33 THEN 'C Indústria de transformação' WHEN d=35 THEN 'D Eletricidade e gás' WHEN d<=39 THEN 'E Água, esgoto e resíduos' WHEN d<=43 THEN 'F Construção' WHEN d<=47 THEN 'G Comércio' WHEN d<=53 THEN 'H Transporte e armazenagem' WHEN d<=56 THEN 'I Alojamento e alimentação' WHEN d<=63 THEN 'J Informação e comunicação' WHEN d<=66 THEN 'K Finanças e seguros' WHEN d=68 THEN 'L Imobiliárias' WHEN d<=75 THEN 'M Profissionais e científicas' WHEN d<=82 THEN 'N Administrativas e complementares' WHEN d=84 THEN 'O Administração pública' WHEN d=85 THEN 'P Educação' WHEN d<=88 THEN 'Q Saúde e serviços sociais' WHEN d<=93 THEN 'R Artes, cultura e esporte' WHEN d<=96 THEN 'S Outros serviços' WHEN d=97 THEN 'T Serviços domésticos' ELSE 'U Organismos internacionais / ignorado' END`;
+
+const PRONTAS = [
+  { base: 'PNAD', titulo: 'Taxa de desocupação por sexo', desc: '2012T1 e 2026T3, com IC 95% e CV.', tipo: 'pnad', pct: true,
+    sql: `SELECT e.ano, e.tri, r.nome AS sexo, e.estimativa, e.ic95_inf, e.ic95_sup, e.cv, e.n_amostra
+FROM pnad_razao((VD4002=2)::INT, (VD4001=1)::INT, V2007, true) e
+LEFT JOIN rotulo r ON r.var='V2007' AND r.cod=e.grupo
+ORDER BY e.ano, e.tri, sexo` },
+  { base: 'PNAD', titulo: 'Rendimento habitual médio por cor ou raça', desc: 'Trabalho principal dos ocupados, 2026T3, em R$ correntes.', tipo: 'pnad', pct: false,
+    sql: `SELECT e.ano, e.tri, r.nome AS cor_raca, e.estimativa, e.ic95_inf, e.ic95_sup, e.cv, e.n_amostra
+FROM pnad_razao(coalesce(VD4016,0)*(VD4002=1)::INT, (VD4002=1 AND VD4016 IS NOT NULL)::INT, V2010, Ano=2026) e
+LEFT JOIN rotulo r ON r.var='V2010' AND r.cod=e.grupo
+ORDER BY e.estimativa DESC` },
+  { base: 'PNAD', titulo: 'Taxa de desocupação por grupo de idade', desc: '2026T3.', tipo: 'pnad', pct: true,
+    sql: `SELECT e.ano, e.tri, e.grupo AS idade, e.estimativa, e.ic95_inf, e.ic95_sup, e.cv, e.n_amostra
+FROM pnad_razao((VD4002=2)::INT, (VD4001=1)::INT,
+  CASE WHEN V2009<25 THEN '14 a 24' WHEN V2009<40 THEN '25 a 39' WHEN V2009<60 THEN '40 a 59' ELSE '60 ou mais' END, Ano=2026) e
+ORDER BY idade` },
+  { base: 'RAIS', titulo: 'Vínculos formais por setor', desc: 'Vínculos ativos em 31/12/2024 e remuneração média, por seção da CNAE.', tipo: 'rais', col: 'vinculos',
+    sql: `SELECT ${SECAO} AS setor, count(*) AS vinculos, round(avg(vl_rem_media_nom), 2) AS remuneracao_media
+FROM (SELECT *, cnae_2_0_classe // 1000 AS d FROM rais_2024 WHERE ind_vinculo_ativo_31_12 = 1)
+GROUP BY 1 ORDER BY vinculos DESC` },
+  { base: 'RAIS', titulo: 'Programadores e analistas de TI por cor ou raça', desc: 'CBO família 2124, vínculos ativos em 31/12/2024.', tipo: 'rais', col: 'vinculos',
+    sql: `SELECT r.nome AS cor_raca, count(*) AS vinculos, round(avg(vl_rem_media_nom), 2) AS remuneracao_media,
+  round(median(vl_rem_media_nom::DOUBLE), 2) AS remuneracao_mediana
+FROM rais_2024 v LEFT JOIN rotulo r ON r.var='raca_cor' AND r.cod=v.raca_cor
+WHERE ind_vinculo_ativo_31_12 = 1 AND cbo_2002_ocupacao BETWEEN 212400 AND 212499
+GROUP BY 1 ORDER BY vinculos DESC` },
+  { base: 'RAIS', titulo: 'Remuneração por sexo e escolaridade', desc: 'Vínculos ativos em 31/12/2024: média e mediana.', tipo: 'rais', col: 'vinculos',
+    sql: `SELECT re.nome AS escolaridade, rs.nome AS sexo, count(*) AS vinculos,
+  round(avg(vl_rem_media_nom), 2) AS remuneracao_media, round(median(vl_rem_media_nom::DOUBLE), 2) AS remuneracao_mediana
+FROM rais_2024 v
+LEFT JOIN rotulo rs ON rs.var='sexo' AND rs.cod=v.sexo
+LEFT JOIN rotulo re ON re.var='escolaridade' AND re.cod=v.escolaridade_apos_2005
+WHERE ind_vinculo_ativo_31_12 = 1
+GROUP BY v.escolaridade_apos_2005, 1, 2 ORDER BY v.escolaridade_apos_2005, sexo` },
+];
+
+const ROTULOS = [
+  ['V2007',1,'Homem'],['V2007',2,'Mulher'],
+  ['V2010',1,'Branca'],['V2010',2,'Preta'],['V2010',3,'Amarela'],['V2010',4,'Parda'],['V2010',5,'Indígena'],['V2010',9,'Ignorado'],
+  ['sexo',1,'Masculino'],['sexo',2,'Feminino'],
+  ['raca_cor',1,'Indígena'],['raca_cor',2,'Branca'],['raca_cor',4,'Preta'],['raca_cor',6,'Amarela'],['raca_cor',8,'Parda'],['raca_cor',9,'Não identificado'],
+  ['escolaridade',1,'Analfabeto'],['escolaridade',2,'Até 5ª incompleto'],['escolaridade',3,'5ª completo fundamental'],['escolaridade',4,'6ª a 9ª fundamental'],
+  ['escolaridade',5,'Fundamental completo'],['escolaridade',6,'Médio incompleto'],['escolaridade',7,'Médio completo'],['escolaridade',8,'Superior incompleto'],
+  ['escolaridade',9,'Superior completo'],['escolaridade',10,'Mestrado'],['escolaridade',11,'Doutorado'],
+];
+
+const $ = s => document.querySelector(s);
+const status = $('#status');
+let conn;
+const fmt = (v, casas = 0) => v == null ? '—' : Number(v).toLocaleString('pt-BR', { minimumFractionDigits: casas, maximumFractionDigits: casas });
+
+async function iniciar() {
+  const duckdb = await import(`https://cdn.jsdelivr.net/npm/@duckdb/duckdb-wasm@${VERSAO}/+esm`);
+  const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
+  const wurl = URL.createObjectURL(new Blob([`importScripts("${bundle.mainWorker}");`], { type: 'text/javascript' }));
+  const db = new duckdb.AsyncDuckDB(new duckdb.VoidLogger(), new Worker(wurl));
+  await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+  conn = await db.connect();
+  await conn.query('SET builtin_httpfs=false');
+  await conn.query('LOAD httpfs');
+  await conn.query(`CREATE VIEW pnad_trimestral AS SELECT * FROM read_parquet([${PNAD.map(u => `'${u}'`).join(',')}], union_by_name=true)`);
+  await conn.query(`CREATE VIEW rais_2024 AS SELECT * FROM read_parquet('${RAIS_2024}')`);
+  await conn.query(`CREATE TABLE rotulo(var VARCHAR, cod INTEGER, nome VARCHAR)`);
+  await conn.query(`INSERT INTO rotulo VALUES ${ROTULOS.map(([v, c, n]) => `('${v}', ${c}, '${n.replace(/'/g, "''")}')`).join(',')}`);
+  await conn.query(await (await fetch('macro.sql')).text());
+}
+
+function linhas(res) {
+  const cols = res.schema.fields.map(f => f.name);
+  const rows = res.toArray().map(r => { const o = r.toJSON(); for (const k in o) if (typeof o[k] === 'bigint') o[k] = Number(o[k]); return o; });
+  return { cols, rows };
+}
+
+function qualidade(cv, n) {
+  if (cv == null) return '';
+  if (cv > 0.30 || n < 30) return '<span class="q-ruim">não confiável</span>';
+  if (cv > 0.15) return '<span class="q-cautela">cautela</span>';
+  return '<span class="q-ok">ok</span>';
+}
+
+function render(titulo, { cols, rows }, opcoes = {}) {
+  const alvo = $('#resultado');
+  if (!rows.length) { alvo.innerHTML = `<h2>${titulo}</h2><p>Nenhuma linha.</p>`; return; }
+  const ehPnad = cols.includes('estimativa') && cols.includes('cv');
+  const colBarra = ehPnad ? 'estimativa' : (opcoes.col || cols.find(c => typeof rows[0][c] === 'number'));
+  const max = Math.max(...rows.map(r => Math.abs(Number(r[colBarra]) || 0))) || 1;
+  const pct = opcoes.pct;
+  const cel = (c, v) => {
+    if (typeof v !== 'number') return v ?? '—';
+    if (ehPnad && ['estimativa', 'ic95_inf', 'ic95_sup'].includes(c)) return pct ? fmt(100 * v, 2) + '%' : 'R$ ' + fmt(v, 0);
+    if (c === 'cv') return fmt(100 * v, 1) + '%';
+    if (c.startsWith('remuneracao')) return 'R$ ' + fmt(v, 2);
+    if (c === 'ano' || c === 'tri') return String(v);
+    return Number.isInteger(v) ? fmt(v) : fmt(v, 2);
+  };
+  let h = `<h2>${titulo}</h2><div class="tabela"><table><thead><tr>${cols.map(c => `<th>${c}</th>`).join('')}${ehPnad ? '<th>qualidade</th>' : ''}<th></th></tr></thead><tbody>`;
+  for (const r of rows.slice(0, 500)) {
+    const w = Math.round(160 * Math.abs(Number(r[colBarra]) || 0) / max);
+    h += `<tr>${cols.map(c => `<td>${cel(c, r[c])}</td>`).join('')}${ehPnad ? `<td>${qualidade(r.cv, r.n_amostra)}</td>` : ''}<td style="text-align:left"><span class="barra" style="width:${w}px"></span></td></tr>`;
+  }
+  h += `</tbody></table></div>`;
+  if (rows.length > 500) h += `<p class="legenda">Mostrando 500 de ${fmt(rows.length)} linhas; o CSV traz todas.</p>`;
+  h += `<div class="acoes"><button class="secundario" id="csv">Baixar CSV</button></div>`;
+  alvo.innerHTML = h;
+  $('#csv').onclick = () => {
+    const esc = v => v == null ? '' : /[",;\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
+    const txt = [cols.join(','), ...rows.map(r => cols.map(c => esc(r[c])).join(','))].join('\n');
+    const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([txt], { type: 'text/csv' })), download: 'consulta.csv' });
+    a.click();
+  };
+  alvo.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function rodar(sql, titulo, opcoes) {
+  const botoes = document.querySelectorAll('button');
+  botoes.forEach(b => b.disabled = true);
+  const t0 = performance.now();
+  status.textContent = 'Consultando…';
+  try {
+    const res = await conn.query(sql);
+    render(titulo, linhas(res), opcoes);
+    status.textContent = `Pronto. Última consulta em ${fmt((performance.now() - t0) / 1000, 1)} s.`;
+    window.__ultima = { titulo, ...linhas(res) };
+  } catch (e) {
+    $('#resultado').innerHTML = `<h2>Erro</h2><pre>${String(e.message || e).replace(/</g, '&lt;')}</pre>`;
+    status.textContent = 'A consulta falhou.';
+    window.__ultima = { erro: String(e) };
+  } finally { botoes.forEach(b => b.disabled = false); }
+}
+
+const grade = $('#prontas');
+PRONTAS.forEach((q, i) => {
+  const d = document.createElement('div');
+  d.className = 'cartao';
+  d.innerHTML = `<div class="base">${q.base}</div><h3>${q.titulo}</h3><p class="suave">${q.desc}</p>
+  <div class="acoes"><button data-i="${i}" disabled>Rodar</button><button class="secundario" data-sql="${i}">Ver SQL</button></div>`;
+  grade.appendChild(d);
+});
+grade.addEventListener('click', ev => {
+  const b = ev.target.closest('button'); if (!b) return;
+  if (b.dataset.i) { const q = PRONTAS[b.dataset.i]; rodar(q.sql, q.titulo, q); }
+  if (b.dataset.sql) { $('#sql').value = PRONTAS[b.dataset.sql].sql; $('#sql').scrollIntoView({ behavior: 'smooth' }); }
+});
+$('#sql').value = PRONTAS[0].sql;
+$('#rodar').onclick = () => rodar($('#sql').value, 'Resultado do SQL', {});
+$('#sql').addEventListener('keydown', e => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $('#rodar').click(); } });
+
+try {
+  await iniciar();
+  document.querySelectorAll('button').forEach(b => b.disabled = false);
+  status.textContent = 'Pronto. Escolha uma consulta ou escreva SQL.';
+  window.__pronto = true;
+} catch (e) {
+  status.textContent = 'Falha ao iniciar o motor: ' + e;
+  window.__pronto = 'erro: ' + e;
+}
+</script>
+</body>
+</html>
