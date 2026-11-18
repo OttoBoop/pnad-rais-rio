@@ -1,0 +1,241 @@
+{
+ "gerado_em": "2026-11-18",
+ "macros": "sql/estimacao_pnad.sql",
+ "tabelas": {
+  "pnad_trimestral": {
+   "titulo": "PNAD Contínua trimestral",
+   "fonte": "IBGE",
+   "peso": "V1028",
+   "estrato": "Estrato",
+   "upa": "UPA",
+   "periodo": [
+    "Ano",
+    "Trimestre"
+   ],
+   "dicionario": "dados/dic/pnad_trimestral.json",
+   "arquivos": [
+    {
+     "ano": 2012,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2012.zip",
+     "bytes": 1799998,
+     "linhas": 53649,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2013,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2013.zip",
+     "bytes": 1800714,
+     "linhas": 54161,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2014,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2014.zip",
+     "bytes": 1830805,
+     "linhas": 55499,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2015,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2015.zip",
+     "bytes": 1776961,
+     "linhas": 53988,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2016,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2016.zip",
+     "bytes": 1729927,
+     "linhas": 53053,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2017,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2017.zip",
+     "bytes": 1774799,
+     "linhas": 53339,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2018,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2018.zip",
+     "bytes": 1865025,
+     "linhas": 54732,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2019,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2019.zip",
+     "bytes": 1819626,
+     "linhas": 52660,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2020,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2020.zip",
+     "bytes": 1251255,
+     "linhas": 36249,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2021,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2021.zip",
+     "bytes": 1094773,
+     "linhas": 30956,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2022,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2022.zip",
+     "bytes": 1592028,
+     "linhas": 45969,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2023,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2023.zip",
+     "bytes": 1657429,
+     "linhas": 47587,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2024,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2024.zip",
+     "bytes": 1687021,
+     "linhas": 47534,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2025,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2025.zip",
+     "bytes": 1614359,
+     "linhas": 45143,
+     "trimestres": [
+      1,
+      2,
+      3,
+      4
+     ]
+    },
+    {
+     "ano": 2026,
+     "url": "dados/pnad/trimestral/pnad_trimestral_2026.zip",
+     "bytes": 1093887,
+     "linhas": 29711,
+     "trimestres": [
+      1,
+      2,
+      3
+     ]
+    }
+   ]
+  },
+  "pnad_deflatores": {
+   "titulo": "Deflatores da PNAD Contínua trimestral (UF 33)",
+   "fonte": "IBGE",
+   "peso": null,
+   "estrato": null,
+   "upa": null,
+   "periodo": [
+    "Ano",
+    "Trimestre"
+   ],
+   "dicionario": null,
+   "nota": "Habitual e Efetivo por trimestre móvel ('trim'); 'Trimestre' preenchido só nos trimestres civis. Rendimento real = rendimento x deflator (preços do último trimestre do arquivo do IBGE). Junte por Ano, Trimestre e UF.",
+   "arquivos": [
+    {
+     "ano": null,
+     "url": "dados/pnad/deflatores.zip",
+     "bytes": 5084,
+     "linhas": 175
+    }
+   ]
+  },
+  "pnad_deflatores_visita": {
+   "titulo": "Deflatores da PNAD Contínua anual por visita (UF 33)",
+   "fonte": "IBGE",
+   "peso": null,
+   "estrato": null,
+   "upa": null,
+   "periodo": [
+    "Ano",
+    "Trimestre"
+   ],
+   "dicionario": null,
+   "nota": "CO1/CO1e (habitual/efetivo do trabalho) e CO2/CO2e/CO3 (outras fontes e domiciliar), conforme deflacionamento_PNADC_anual_visita.txt do IBGE. Junte por Ano, Trimestre e UF.",
+   "arquivos": [
+    {
+     "ano": null,
+     "url": "dados/pnad/deflatores_visita.zip",
+     "bytes": 4723,
+     "linhas": 60
+    }
+   ]
+  }
+ }
+}

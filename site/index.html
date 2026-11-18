@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="Microdados da PNAD Contínua e da RAIS restritos ao município do Rio de Janeiro, consultados no navegador com SQL (DuckDB-WASM).">
+<meta name="color-scheme" content="light dark">
+<title>PNAD + RAIS · município do Rio</title>
+<link rel="stylesheet" href="estilo.css">
+<script type="module" src="js/app.js"></script>
+</head>
+<body>
+<header class="topo">
+  <div class="topo-linha">
+    <a class="marca" href="#inicio"><b>pnad-rais-rio</b><span>microdados do município do Rio</span></a>
+    <div class="status">
+      <span id="motor-status" class="pilula" role="status">Motor: carregando…</span>
+      <button type="button" id="medidor" class="pilula medidor" aria-expanded="false" aria-controls="medidor-detalhe" title="Bytes de dados baixados pela última consulta e na sessão">Dados baixados: nenhuma consulta ainda</button>
+    </div>
+  </div>
+  <nav class="nav" aria-label="Seções">
+    <a href="#inicio" data-rota="inicio">Início</a>
+    <a href="#explorar" data-rota="explorar">Explorar</a>
+    <a href="#sql" data-rota="sql">SQL</a>
+    <a href="#dicionario" data-rota="dicionario">Dicionário</a>
+    <a href="#metodologia" data-rota="metodologia">Metodologia</a>
+    <a href="#arquivos" data-rota="arquivos">Arquivos</a>
+  </nav>
+  <div id="medidor-detalhe" class="medidor-detalhe" hidden></div>
+</header>
+
+<main id="conteudo">
+  <p class="aviso" id="aviso-parcial"><strong>Versão parcial (18/11/2026).</strong> Já no ar: PNAD Contínua trimestral completa, de 2012T1 a 2026T3. Em processamento: os arquivos anuais da PNAD e a RAIS de 2006 a 2025. Enquanto isso, a RAIS 2024 inteira pode ser consultada na <a href="demo/">demonstração</a>.</p>
+  <section id="pag-inicio" data-pagina="inicio" hidden>
+    <h1>PNAD Contínua e RAIS do município do Rio</h1>
+    <p class="lead">Microdados da PNAD Contínua (IBGE) e da RAIS (MTE), só do município do Rio de Janeiro, consultados no próprio navegador com SQL. Não há servidor de banco: o DuckDB-WASM lê os arquivos Parquet por partes e baixa só as colunas e os blocos de que cada consulta precisa.</p>
+    <ul class="atalhos">
+      <li><a href="#explorar"><b>Explorar</b><span>cruzamentos prontos com IC 95%, CV e n (PNAD) ou contagens e remunerações (RAIS)</span></a></li>
+      <li><a href="#sql"><b>SQL</b><span>consulta livre, com macros de erro-padrão e exemplos</span></a></li>
+      <li><a href="#dicionario"><b>Dicionário</b><span>variáveis, categorias e anos disponíveis</span></a></li>
+      <li><a href="#metodologia"><b>Metodologia</b><span>recorte, pesos, variância, quebras de série e fontes</span></a></li>
+      <li><a href="#arquivos"><b>Arquivos</b><span>download de cada arquivo Parquet</span></a></li>
+    </ul>
+    <h2>Cobertura</h2>
+    <p class="mudo">Tirada dos manifestos publicados (<span id="inicio-manifestos"></span>).</p>
+    <div class="rolagem"><table class="dados" id="tab-cobertura"></table></div>
+    <h2>Quanto cada consulta baixa</h2>
+    <p>O medidor no topo da página soma os bytes de dados recebidos pelo motor na última consulta e na sessão. Ele conta as respostas dentro do worker do DuckDB, que é quem lê os arquivos. Uma consulta que usa poucas colunas de um ano baixa uma fração pequena do arquivo; uma série de todos os anos abre todos os arquivos daquela tabela.</p>
+    <p id="inicio-motor" class="mudo"></p>
+    <h2>Links</h2>
+    <ul>
+      <li>Código e documentação: <a href="https://github.com/OttoBoop/pnad-rais-rio">github.com/OttoBoop/pnad-rais-rio</a></li>
+      <li>Arquivos da RAIS: <a href="https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados">huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados</a></li>
+      <li>Fontes originais: <a href="https://ftp.ibge.gov.br/Trabalho_e_Rendimento/Pesquisa_Nacional_por_Amostra_de_Domicilios_continua/">PNAD Contínua no FTP do IBGE</a> e <a href="ftp://ftp.mtps.gov.br/pdet/microdados/RAIS/">RAIS no FTP do PDET/MTE</a></li>
+    </ul>
+  </section>
+
+  <section id="pag-explorar" data-pagina="explorar" hidden>
+    <h1>Explorar</h1>
+    <p class="mudo">Escolha a base, a medida, linhas, colunas, filtros e período. O SQL gerado fica no botão "Ver SQL".</p>
+    <div id="explorar-raiz"><p class="mudo">Carregando o motor…</p></div>
+  </section>
+
+  <section id="pag-sql" data-pagina="sql" hidden>
+    <h1>SQL</h1>
+    <p class="mudo">DuckDB (dialeto do DuckDB 1.4). Ctrl+Enter executa. Os nomes das tabelas e dos macros estão em "Tabelas, views e macros" e na tabela <code>catalogo</code>.</p>
+    <div id="sql-raiz"><p class="mudo">Carregando o motor…</p></div>
+  </section>
+
+  <section id="pag-dicionario" data-pagina="dicionario" hidden>
+    <h1>Dicionário</h1>
+    <div id="dicionario-raiz"><p class="mudo">Carregando dicionários…</p></div>
+  </section>
+
+  <section id="pag-arquivos" data-pagina="arquivos" hidden>
+    <h1>Arquivos</h1>
+    <p>Cada arquivo é Parquet (compressão ZSTD), um por ano. No GitHub Pages os arquivos são publicados com extensão <code>.zip</code>, porque o Pages comprime com gzip os <code>.parquet</code> e isso quebra a leitura por partes; o conteúdo é Parquet puro, e o link abaixo baixa com o nome <code>.parquet</code>. Em Python: <code>pd.read_parquet(arquivo)</code>; em R: <code>arrow::read_parquet(arquivo)</code>; no DuckDB: <code>read_parquet('arquivo')</code>.</p>
+    <div id="arquivos-raiz"></div>
+  </section>
+
+  <section id="pag-metodologia" data-pagina="metodologia" class="texto" hidden>
+    <h1>Metodologia</h1>
+
+    <h2>Recorte do município do Rio</h2>
+    <p><b>PNAD Contínua.</b> Entram só os registros com <code>UF = 33</code> e <code>Capital = 33</code>, isto é, moradores do município do Rio de Janeiro. As estimativas valem para a população do município coberta pela pesquisa (moradores de domicílios particulares permanentes).</p>
+    <p><b>RAIS.</b> Entram os vínculos e estabelecimentos com município do estabelecimento igual a 330455 (código IBGE do Rio, 6 dígitos). O município de trabalho (<code>municipio_trab</code>) quase não vem preenchido desde 2023, por isso o recorte usa o do estabelecimento: um vínculo de empresa sediada no Rio entra mesmo se a pessoa trabalha fora.</p>
+
+    <h2>PNAD: pesos, erro-padrão e avisos</h2>
+    <p>Toda estimativa da PNAD é ponderada pelo peso da pessoa: <code>V1028</code> na trimestral e <code>V1032</code> nas anuais por visita. Os arquivos não trazem os 200 pesos replicados (<code>V1028001</code>–<code>V1028200</code> e <code>V1032001</code>–<code>V1032200</code>), para ficarem pequenos.</p>
+    <p>O erro-padrão é calculado por <b>linearização de Taylor</b> com o desenho amostral: estratos (<code>Estrato</code>) e unidades primárias de amostragem (<code>UPA</code>), com as UPAs tratadas como sorteadas com reposição dentro de cada estrato. Proporções, taxas e médias são estimadores de razão, r = Ŷ/X̂. Para cada UPA <i>i</i> do estrato <i>h</i>, o termo linearizado é z<sub>hi</sub> = Σ w (y − r·x) / X̂, somado sobre as pessoas da UPA, e a variância é</p>
+    <p class="formula">V(r) = Σ<sub>h</sub> n<sub>h</sub>/(n<sub>h</sub> − 1) · Σ<sub>i</sub> (z<sub>hi</sub> − z̄<sub>h</sub>)²</p>
+    <p>em que n<sub>h</sub> é o número de UPAs do estrato no período. Para totais, z<sub>hi</sub> = Σ w·y. Estratos com uma UPA só entram com variância zero. O filtro define o domínio, não o desenho: todas as UPAs dos períodos alcançados entram no cálculo, com z = 0 nas que não têm ninguém do domínio.</p>
+    <p>O IBGE calcula o CV com os pesos replicados, que incorporam a calibração dos pesos pela projeção de população. A linearização simples não incorpora essa calibração. Nas razões (taxas, médias e proporções), o efeito é pequeno; nos totais, o macro <code>pnad_total_cal</code> trata a calibração por pós-estrato (<code>posest</code>), e é ele que o Explorar usa. O código e a descrição de cada macro estão em <a href="sql/estimacao_pnad.sql"><code>sql/estimacao_pnad.sql</code></a>; a comparação com os CVs publicados pelo IBGE fica no repositório (<code>validacao_pnad.md</code>).</p>
+    <ul>
+      <li><b>IC 95%</b> = estimativa ± 1,96 × erro-padrão.</li>
+      <li><b>CV</b> (coeficiente de variação) = erro-padrão ÷ estimativa.</li>
+      <li><b>n amostral</b> = número de pessoas na amostra que entram no denominador da estimativa.</li>
+      <li><b>Avisos de CV, convenção deste site</b> (não é regra do IBGE): CV acima de 15% recebe "use com cautela"; acima de 30%, "não confiável". As estimativas continuam na tabela e no CSV, com o aviso ao lado.</li>
+    </ul>
+
+    <h2>RAIS: registro administrativo</h2>
+    <p>A RAIS é um registro, não uma amostra: não tem peso nem erro amostral, e contagens, somas, médias e medianas são calculadas diretamente sobre os registros. A unidade é o vínculo; uma pessoa com dois empregos conta duas vezes.</p>
+    <ul>
+      <li><b>Estoque de emprego</b>: o Explorar conta por padrão os vínculos ativos em 31/12 (<code>ind_vinculo_ativo_31_12 = 1</code>). Desmarcando a opção, entram todos os vínculos que existiram no ano.</li>
+      <li><b>Remuneração</b>: <code>vl_rem_media_nom</code> (média mensal no ano) e <code>vl_rem_dezembro_nom</code> estão em reais nominais. Comparar anos exige deflacionar. Nas somas, médias e medianas, o Explorar exclui por padrão os valores nulos e zerados (opção visível no formulário).</li>
+      <li><b>Códigos de "ignorado"</b> (por exemplo, bairro 9997 ou 999997) ficam como na fonte; o dicionário diz o que cada um significa.</li>
+      <li><b>Nomes das colunas</b>: os do leiaute eSocial (2023 em diante), em snake_case. Os nomes do leiaute antigo foram mapeados para eles pela tabela <a href="https://www.gov.br/trabalho-e-emprego/pt-br/acesso-a-informacao/acoes-e-programas/programas-projetos-acoes-obras-e-atividades/estatisticas-trabalho/rais/rais-2024/rais-2024-1/de-para-microdados.xlsx">De-Para dos microdados</a> do MTE.</li>
+    </ul>
+
+    <h2>Quebras de série</h2>
+    <ul>
+      <li><b>RAIS 2023, eSocial.</b> A partir de 2023 a RAIS vem do eSocial. A série principal (<code>rais_vinculos</code>) usa o arquivo eSocial de 2023; o arquivo Legado de 2023 fica à parte, em <code>rais_vinculos_2023_legado</code>, para comparação. A versão Parcial não entra. O exemplo "RAIS 2023: série principal contra o arquivo Legado", no SQL, compara os dois.</li>
+      <li><b>Bairro dos vínculos só até 2021.</b> Em 2022 quase todos os vínculos vêm com bairro ignorado, e de 2023 em diante todos. Os vínculos não trazem CEP nem identificador do estabelecimento, então não há como recuperar o bairro do vínculo depois de 2021.</li>
+      <li><b>PNAD em 2020 e 2021.</b> Na pandemia o IBGE passou a coletar a PNAD por telefone e, no SIDRA, deixou de divulgar estimativas do município do Rio em trimestres de 2020 e 2021. Os microdados desses trimestres estão aqui; confira o CV de cada estimativa antes de usar.</li>
+      <li><b>Anuais por visita.</b> Os anos disponíveis de cada visita estão na Cobertura (Início); a 1ª visita de 2020 e 2021 não foi divulgada pelo IBGE.</li>
+    </ul>
+
+    <h2>Como o site lê os dados</h2>
+    <ul>
+      <li>Os dados ficam em arquivos Parquet com compressão ZSTD, um por ano: a PNAD no próprio GitHub Pages e a RAIS no Hugging Face. A lista de arquivos vem de dois manifestos (<code>dados/manifest_pnad.json</code> e <code>dados/manifest_rais.json</code>); o site não lê nada fora deles.</li>
+      <li>O motor é o <a href="https://github.com/duckdb/duckdb-wasm">DuckDB-WASM</a> 1.32.0, carregado do jsDelivr com versão fixa, sempre com <code>SET builtin_httpfs=false; LOAD httpfs</code>: sem isso, essa versão baixa o arquivo inteiro em vez das partes.</li>
+      <li>Cada tabela tem uma view com todos os anos (<code>rais_vinculos</code>, por exemplo), criada na primeira consulta que a menciona, e um macro <code>rais_vinculos_periodo(ano_inicial, ano_final)</code> que só abre os arquivos dos anos pedidos. Abrir um arquivo custa o rodapé do Parquet; ler custa as colunas e os blocos usados.</li>
+      <li>No Hugging Face, cada pedaço lido passa por um redirecionamento, e há limite de requisições por IP; uma equipe atrás do mesmo IP divide esse limite.</li>
+      <li>Gráficos com <a href="https://observablehq.com/plot/">Observable Plot</a> 0.6.17.</li>
+    </ul>
+
+    <h2>Fontes</h2>
+    <ul>
+      <li>IBGE, PNAD Contínua: <a href="https://ftp.ibge.gov.br/Trabalho_e_Rendimento/Pesquisa_Nacional_por_Amostra_de_Domicilios_continua/">microdados, dicionários e deflatores (FTP)</a>; estimativas oficiais no <a href="https://sidra.ibge.gov.br/">SIDRA</a>.</li>
+      <li>Ministério do Trabalho e Emprego, RAIS: <a href="ftp://ftp.mtps.gov.br/pdet/microdados/RAIS/">microdados no FTP do PDET</a>.</li>
+      <li>Arquivos derivados deste site: <a href="https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados">Hugging Face</a> e página Arquivos.</li>
+      <li>Código do processamento e do site: <a href="https://github.com/OttoBoop/pnad-rais-rio">GitHub</a>.</li>
+    </ul>
+  </section>
+</main>
+</body>
+</html>
