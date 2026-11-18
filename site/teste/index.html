@@ -28,8 +28,9 @@ try {
       t.linhas = n.toArray()[0].n;
       t.ms_contagem = Math.round(performance.now() - t0);
       const t1 = performance.now();
-      const r = await conn.query(`SELECT VD4002::INT AS vd4002, round(sum(V1028))::BIGINT AS pop FROM read_parquet('${url}') GROUP BY 1 ORDER BY 1`);
-      t.agregado = r.toArray().map(x => [x.vd4002, Number(x.pop)]);
+      const modelo = p.get('sql') || "SELECT VD4002::INT AS vd4002, round(sum(V1028))::BIGINT AS pop FROM {tab} GROUP BY 1 ORDER BY 1";
+      const r = await conn.query(modelo.replaceAll('{tab}', `read_parquet('${url}')`));
+      t.agregado = r.toArray().slice(0, 20).map(x => Object.values(x.toJSON()).map(v => typeof v === 'bigint' ? Number(v) : v));
       t.ms_agregado = Math.round(performance.now() - t1);
     } catch (e) { t.erro = String(e).slice(0, 300); }
     resultado.testes.push(t);
