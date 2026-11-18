@@ -67,6 +67,18 @@
      "linhas": 3990653
     },
     {
+     "ano": 2015,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2015.parquet",
+     "bytes": 123284706,
+     "linhas": 3715428
+    },
+    {
+     "ano": 2016,
+     "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2016.parquet",
+     "bytes": 116825041,
+     "linhas": 3470813
+    },
+    {
      "ano": 2024,
      "url": "https://huggingface.co/datasets/OttoBoop/pnad-rais-rio-dados/resolve/main/rais/vinculos/rais_vinculos_2024.parquet",
      "bytes": 115284269,
