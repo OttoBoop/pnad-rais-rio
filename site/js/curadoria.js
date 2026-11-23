@@ -57,29 +57,29 @@ export const MEDIDAS = {
 
 // ordinal: as categorias têm ordem própria (idade, escolaridade, porte); o gráfico não reordena pelo valor.
 const PESSOA_PNAD = { grupo: 'Pessoa', itens: [
-  { id: 'V2007', nome: 'Sexo' }, { id: 'V2010', nome: 'Cor ou raça' },
-  { id: 'V2009@faixa', nome: 'Faixa de idade', ordinal: true }, { id: 'VD3004', nome: 'Escolaridade', ordinal: true }] };
+  { id: 'V2007', nome: 'Sexo', conceito: 'sexo' }, { id: 'V2010', nome: 'Cor ou raça', conceito: 'cor' },
+  { id: 'V2009@faixa', nome: 'Faixa de idade', ordinal: true, conceito: 'idade' }, { id: 'VD3004', nome: 'Escolaridade', ordinal: true, conceito: 'escolaridade' }] };
 const TRABALHO_PNAD = { grupo: 'Trabalho', itens: [
   { id: 'VD4002', nome: 'Situação: ocupado ou desocupado' }, { id: 'VD4001', nome: 'Na força de trabalho ou fora dela' },
   { id: 'VD4009', nome: 'Tipo de trabalho (com carteira, sem carteira, conta-própria…)' },
   { id: 'VD4012', nome: 'Contribui para a previdência' }, { id: 'VD4013', nome: 'Faixa de horas trabalhadas', ordinal: true }] };
 const SETOR_PNAD = { grupo: 'Setor e ocupação', itens: [
-  { id: 'VD4010', nome: 'Setor de atividade (grupos do IBGE)' }, { id: 'V4013@secao', nome: 'Setor de atividade (seção da CNAE)' },
-  { id: 'VD4011', nome: 'Grupo de ocupação' }, { id: 'V4010@grande_grupo', nome: 'Ocupação (grandes grupos)' }] };
+  { id: 'VD4010', nome: 'Setor de atividade (grupos do IBGE)' }, { id: 'V4013@secao', nome: 'Setor de atividade (seção da CNAE)', conceito: 'setor' },
+  { id: 'VD4011', nome: 'Grupo de ocupação' }, { id: 'V4010@grande_grupo', nome: 'Ocupação (grandes grupos)', conceito: 'ocupacao' }] };
 
 const SETOR_RAIS = { grupo: 'Setor', itens: [
-  { id: 'cnae_2_0_subclasse@secao', nome: 'Setor (seção da CNAE)' }, { id: 'cnae_2_0_subclasse@divisao', nome: 'Setor detalhado (divisão da CNAE)' },
+  { id: 'cnae_2_0_subclasse@secao', nome: 'Setor (seção da CNAE)', conceito: 'setor' }, { id: 'cnae_2_0_subclasse@divisao', nome: 'Setor detalhado (divisão da CNAE)' },
   { id: 'ibge_subsetor', nome: 'Subsetor do IBGE (25 grupos)' }] };
 
 export const VARIAVEIS = {
   pnad: [PESSOA_PNAD, TRABALHO_PNAD, SETOR_PNAD],
   rais_vinculos: [
     { grupo: 'Pessoa', itens: [
-      { id: 'sexo', nome: 'Sexo' }, { id: 'raca_cor', nome: 'Cor ou raça' },
-      { id: 'faixa_etaria', nome: 'Faixa de idade', ordinal: true }, { id: 'escolaridade_apos_2005', nome: 'Escolaridade', ordinal: true }] },
+      { id: 'sexo', nome: 'Sexo', conceito: 'sexo' }, { id: 'raca_cor', nome: 'Cor ou raça', conceito: 'cor' },
+      { id: 'faixa_etaria', nome: 'Faixa de idade', ordinal: true, conceito: 'idade' }, { id: 'escolaridade_apos_2005', nome: 'Escolaridade', ordinal: true, conceito: 'escolaridade' }] },
     SETOR_RAIS,
     { grupo: 'Ocupação', itens: [
-      { id: 'cbo_2002_ocupacao@grande_grupo', nome: 'Ocupação (grandes grupos)' },
+      { id: 'cbo_2002_ocupacao@grande_grupo', nome: 'Ocupação (grandes grupos)', conceito: 'ocupacao' },
       { id: 'cbo_2002_ocupacao@subgrupo_principal', nome: 'Ocupação (49 subgrupos)' },
       { id: 'cbo_2002_ocupacao@familia', nome: 'Ocupação detalhada (família da CBO)' }] },
     { grupo: 'Vínculo e empresa', itens: [

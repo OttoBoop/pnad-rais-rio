@@ -96,6 +96,50 @@ export function montarConsultar(raiz, ctx) {
     return { ok: true, aviso: avisos.join('; ') };
   }
 
+  // Troca de base sem perder a frase: a mesma variável (ou a equivalente, pelo conceito da curadoria) é mantida,
+  // e as categorias são casadas pelo nome (Branca = BRANCA; Homem = Masculino). O que não existe na nova base sai, com aviso.
+  const SINONIMOS = { homem: 'masculino', mulher: 'feminino' };
+  const chaveRotulo = r => { const k = semAcento(String(r)).trim(); return SINONIMOS[k] || k; };
+  function trocarBase(nova) {
+    const velha = est.base;
+    if (nova === velha) return;
+    const dimsN = dimsDe(nova), dimsV = dimsDe(velha);
+    const perdidos = [];
+    const traduzDim = id => {
+      if (!id) return '';
+      if (dimsN.some(d => d.id === id)) return id;
+      const c = (itemCurto(velha, id) || {}).conceito;
+      const eq = c && curtaDe(nova).flatMap(g => g.itens).find(i => i.conceito === c);
+      if (!eq) perdidos.push(nomeDim(velha, id));
+      return eq ? eq.id : '';
+    };
+    const conds = [];
+    for (const c of est.conds) {
+      const id = traduzDim(c.dim);
+      if (!id) continue;
+      const cv = (dimsV.find(d => d.id === c.dim) || {}).categorias || {};
+      const cn = (dimsN.find(d => d.id === id) || {}).categorias || {};
+      const porRotulo = new Map(Object.entries(cn).map(([k, r]) => [chaveRotulo(r), k]));
+      const valores = c.valores.map(v => (id === c.dim && cn[v] !== undefined ? v : porRotulo.get(chaveRotulo(cv[v] ?? v)))).filter(v => v !== undefined);
+      if (c.valores.length && valores.length < c.valores.length) perdidos.push(`${c.valores.length - valores.length} categoria(s) de "${nomeDim(velha, c.dim)}"`);
+      conds.push({ dim: id, valores: [...new Set(valores)] });
+    }
+    const por = traduzDim(est.por), e = traduzDim(est.e);
+    // Período: mantém os mesmos anos quando a nova base os tem.
+    const anoDe = pid => (pid ? Number(String(pid).slice(0, 4)) : null);
+    const perN = periodos(cat.tabelas[nova]);
+    const a0 = anoDe(est.ini), a1 = anoDe(est.fim);
+    const ultV = periodos(cat.tabelas[velha]).slice(-1)[0];
+    const noUltimo = est.ini === est.fim && est.fim === ultV.id;
+    const ini = noUltimo ? null : (perN.find(p => p.ano === a0) || {}).id || null;
+    const fim = noUltimo ? null : (perN.filter(p => p.ano === a1).slice(-1)[0] || {}).id || null;
+    const medidaVelha = est.medida;
+    Object.assign(est, { base: nova, conds, por, e, ini: ini && fim ? ini : null, fim: ini && fim ? fim : null });
+    if (!medidasDe(nova).some(m => m.id === medidaVelha)) est.medida = null;
+    for (const k of Object.keys(mais)) delete mais[k];
+    est.avisoTroca = perdidos.length ? `Não existe em ${BASES[nova].curto} e saiu da frase: ${perdidos.join('; ')}.` : '';
+  }
+
   function normalizar() {
     const t = cat.tabelas[est.base];
     const ms = medidasDe(est.base);
@@ -217,8 +261,9 @@ export function montarConsultar(raiz, ctx) {
     form.append(linha('Quero ver', selMed, ...extrasMedida, m.nota ? el('p', { class: 'nota' }, m.nota) : null));
 
     const selBase = el('select', { id: 'cq-base', 'aria-label': 'Base' }, bases.map(b => el('option', { value: b, selected: b === est.base }, BASES[b].nome)));
-    selBase.addEventListener('change', () => { est.base = selBase.value; est.conds = []; est.por = est.e = ''; est.ini = est.fim = null; for (const k of Object.keys(mais)) delete mais[k]; render(); });
-    form.append(linha('na base', selBase, el('p', { class: 'nota', id: 'cq-base-dica' }, BASES[est.base].dica)));
+    selBase.addEventListener('change', () => { trocarBase(selBase.value); render(); });
+    form.append(linha('na base', selBase, el('p', { class: 'nota', id: 'cq-base-dica' }, BASES[est.base].dica),
+      est.avisoTroca ? el('p', { class: 'nota aviso-leve', id: 'cq-aviso-troca' }, est.avisoTroca) : null));
 
     // Condições
     const conds = el('div', { class: 'frase-conds' });
@@ -280,6 +325,7 @@ export function montarConsultar(raiz, ctx) {
 
   async function rodar() {
     normalizar();
+    est.avisoTroca = '';
     const t = cat.tabelas[est.base];
     const dims = dimsDe(est.base);
     const m = medidasDe(est.base).find(x => x.id === est.medida);
