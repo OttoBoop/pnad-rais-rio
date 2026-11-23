@@ -1,5 +1,5 @@
 // Explorar: construtor de cruzamentos. Gera um SQL legível, executa no motor e mostra tabela, gráfico e avisos.
-import { el, esc, num, pct, mb, segundos, ident, literal, strSQL, paraCSV, baixarTexto } from './util.js';
+import { el, esc, num, pct, mb, segundos, ident, literal, strSQL, paraCSV, baixarTexto, dicaErro } from './util.js';
 import { dimensoes, numericas } from './dimensoes.js';
 import { desenharGrafico } from './grafico.js';
 
@@ -203,7 +203,7 @@ export function montarExplorar(raiz, ctx) {
     } catch (e) {
       if (plano && plano.previa && e.stats) motor.emitir('consulta', juntarStats(plano.previa, e.stats));
       saida.innerHTML = '';
-      saida.append(el('p', { class: 'erro' }, String(e.message || e)));
+      saida.append(el('p', { class: 'erro' }, String(e.message || e) + dicaErro(e.message || e)));
       if (e.sqlGerado) saida.append(botaoVerSQL(ctx, e.sqlGerado));
     } finally {
       btn.disabled = false;
@@ -398,14 +398,14 @@ function botaoVerSQL(ctx, sql) {
   return el('button', { type: 'button', class: 'secundario', id: 'ex-ver-sql', onclick: () => ctx.abrirNoEditor(sql) }, 'Ver SQL');
 }
 
-function rotuloCat(r, campo, dim) {
+function rotuloCat(r, campo, dim, soRotulo = false) {
   const v = r[campo];
   if (v === null || v === undefined) return dim && dim.nulo ? `(vazio: ${dim.nulo})` : '(vazio)';
   const rot = r[campo + '_rotulo'];
-  return rot ? `${v} · ${rot}` : String(v);
+  return rot ? (soRotulo ? rot : `${v} · ${rot}`) : String(v);
 }
 
-function mostrar(saida, plano, r, ctx) {
+export function mostrar(saida, plano, r, ctx) {
   const t = plano.tabela;
   saida.innerHTML = '';
   const s = r.stats;
@@ -414,15 +414,15 @@ function mostrar(saida, plano, r, ctx) {
   const tot = { ms: s.ms + (p ? p.ms : 0), bytes: s.dados.bytes + (p ? p.dados.bytes : 0), req: s.dados.req + (p ? p.dados.req : 0), criados: [...(p ? p.criados : []), ...s.criados] };
   window.__ultimoExplorar = { sql: plano.sql, colunas: r.colunas, linhas: r.linhas, stats: { ms: tot.ms, dados: { bytes: tot.bytes, req: tot.req } } };
   saida.append(el('div', { class: 'res-cabeca' },
-    el('h3', {}, plano.rotuloMedida.replace(/^./, c => c.toUpperCase())),
+    plano.semTitulo ? null : el('h3', {}, plano.rotuloMedida.replace(/^./, c => c.toUpperCase())),
     el('p', { class: 'mudo', id: 'ex-stats' }, `${num(r.linhas.length)} linhas · ${segundos(tot.ms)} · ${mb(tot.bytes)} baixados em ${tot.req} requisições${p ? ' (em duas consultas: categorias e estimativas)' : ''}${tot.criados.length ? ` · abriu ${tot.criados.join(', ')}` : ''}`)));
 
   const A = t.colAno || 'ano', T = t.colTrimestre;
   const linhas = r.linhas.map(x => {
     const o = { ...x };
     o._periodo = T ? `${x[A]}T${x[T]}` : String(x[plano.amostral ? A : 'ano']);
-    if (plano.linha) o._linha = rotuloCat(x, 'linha', plano.linha);
-    if (plano.coluna) o._coluna = rotuloCat(x, 'coluna', plano.coluna);
+    if (plano.linha) o._linha = rotuloCat(x, 'linha', plano.linha, plano.soRotulo);
+    if (plano.coluna) o._coluna = rotuloCat(x, 'coluna', plano.coluna, plano.soRotulo);
     if (plano.amostral) o._aviso = avisoCV(x.cv);
     return o;
   });

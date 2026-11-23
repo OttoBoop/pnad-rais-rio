@@ -77,20 +77,22 @@ export function dimensoes(cat, chave) {
   for (const [nome, v] of Object.entries(vars)) {
     if (nome === t.colAno || nome === t.colTrimestre) continue;
     const desc = v.descricao || '';
-    if (v.categorias) {
-      dims.push({ id: nome, variavel: nome, rotulo: `${nome} · ${desc}`, expr: ident(nome), rot: { tabela: chave, variavel: nome, numerico: true }, categorias: v.categorias, anos: v.anos, nulo: v.nulo });
-    } else if (v.classificacao) {
-      const cl = cat.classificacoes[v.classificacao];
-      const titulo = (cl && cl.titulo) || v.classificacao;
+    const cl = v.classificacao ? cat.classificacoes[v.classificacao] : null;
+    if (cl && v.nivelClassificacao && cl.niveis[v.nivelClassificacao]) {
+      // Variável com classificação (CBO, CNAE, COD, bairros): os rótulos da folha foram copiados para
+      // dic_categorias sob a própria variável (junto com os códigos especiais do dicionário da tabela).
+      const titulo = cl.titulo || v.classificacao;
       const folha = v.nivelClassificacao;
-      const mapa = cl && folha ? cl.niveis[folha] : null;
-      const numerico = mapa ? Object.keys(mapa).every(k => /^-?\d+$/.test(k)) : true;
-      dims.push({ id: nome, variavel: nome, rotulo: `${nome} · ${desc} (${titulo}${folha && folha !== 'codigo' ? `, ${nomeNivel(folha)}` : ''})`, expr: ident(nome), rot: mapa ? { tabela: v.classificacao, variavel: folha, numerico } : null, categorias: mapa, anos: v.anos, nulo: v.nulo });
+      const mapa = { ...cl.niveis[folha], ...(v.categorias || {}) };
+      const numerico = Object.keys(mapa).every(k => /^-?\d+$/.test(k));
+      dims.push({ id: nome, variavel: nome, rotulo: `${nome} · ${desc} (${titulo}${folha !== 'codigo' ? `, ${nomeNivel(folha)}` : ''})`, expr: ident(nome), rot: { tabela: chave, variavel: nome, numerico }, categorias: mapa, anos: v.anos, nulo: v.nulo });
       if (cl && folha) {
         for (const nd of niveisDerivados(cl, folha)) {
           dims.push({ id: `${nome}@${nd.nivel}`, variavel: nome, rotulo: `${nome} · ${desc} (${titulo}, ${nomeNivel(nd.nivel)})`, expr: nd.expr(ident(nome)), rot: cl.niveis[nd.nivel] ? { tabela: v.classificacao, variavel: nd.nivel, numerico: nd.numerico } : null, categorias: cl.niveis[nd.nivel] || null, anos: v.anos, nulo: v.nulo });
         }
       }
+    } else if (v.categorias) {
+      dims.push({ id: nome, variavel: nome, rotulo: `${nome} · ${desc}`, expr: ident(nome), rot: { tabela: chave, variavel: nome, numerico: true }, categorias: v.categorias, anos: v.anos, nulo: v.nulo });
     }
   }
   if (t.amostral && vars.V2009) {
@@ -109,4 +111,10 @@ export function numericas(cat, chave) {
     return /^(vl_|tempo_emprego|idade$|qtd_)/.test(nome);
   }).map(([nome, v]) => ({ nome, descricao: v.descricao || '', tipo: v.tipo }))
     .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { numeric: true }));
+}
+
+// LEFT JOIN do rótulo de uma dimensão em dic_categorias (código numérico por codigo_num; texto por codigo).
+export function juntarRotulo(alias, dim, col) {
+  const cond = dim.rot.numerico ? `${alias}.codigo_num = ${col}` : `${alias}.codigo = ${col}::VARCHAR`;
+  return `LEFT JOIN dic_categorias ${alias} ON ${alias}.tabela = '${dim.rot.tabela}' AND ${alias}.variavel = '${dim.rot.variavel}' AND ${cond}`;
 }

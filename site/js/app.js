@@ -5,6 +5,7 @@ import { el, num, mb, segundos, faixasAnos } from './util.js';
 import { montarExplorar } from './explorar.js';
 import { montarSQL } from './sql.js';
 import { montarDicionario } from './dicionario.js';
+import { montarProntas } from './prontas.js';
 
 const ROTAS = ['inicio', 'explorar', 'sql', 'dicionario', 'metodologia', 'arquivos'];
 const montadas = new Set();
@@ -59,6 +60,13 @@ function montarInicio() {
   if (!tabelas.length) tab.append(el('tbody', {}, el('tr', {}, el('td', { colspan: 7 }, 'Nenhum manifesto publicado ainda.'))));
   const faltam = cat.manifestos.filter(m => !m.ok);
   if (faltam.length) tab.after(el('p', { class: 'aviso' }, `Ainda sem dados: ${faltam.map(m => m.nome.toUpperCase()).join(' e ')} (manifesto não publicado).`));
+  ctx.motor.iniciar()
+    .then(() => { ctx.prontas = montarProntas(document.getElementById('prontas'), document.getElementById('prontas-resultado'), ctx); })
+    .catch(e => {
+      const g = document.getElementById('prontas');
+      g.innerHTML = '';
+      g.append(el('p', { class: 'erro' }, `O motor não carregou: ${e.message || e}`));
+    });
 }
 
 function montarArquivos() {

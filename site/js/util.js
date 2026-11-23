@@ -28,6 +28,12 @@ export function segundos(ms) {
   return fmt(ms < 10000 ? 2 : 1).format(ms / 1000) + ' s';
 }
 
+// Erro típico de arquivo trocado no servidor durante a sessão (o DuckDB guarda os metadados em cache).
+export function dicaErro(msg) {
+  return /don't know what type|magic bytes|Corrupt|Could not read|out of range|HTTP 416|truncated/i.test(String(msg || ''))
+    ? ' Se os arquivos foram atualizados durante a sua sessão, recarregue a página e rode de novo.' : '';
+}
+
 export function esc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 }

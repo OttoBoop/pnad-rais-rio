@@ -228,6 +228,11 @@ export class Motor {
         const c = v.categorias || {};
         vars.push(`(${strSQL(tabela)}, ${strSQL(nome)}, ${strSQL(v.descricao || '')}, ${strSQL(v.tipo || '')}, ${anos}, ${Object.keys(c).length}, ${v.classificacao ? strSQL(v.classificacao) : 'NULL'})`);
         for (const [cod, rot] of Object.entries(c)) addCat(tabela, nome, cod, rot);
+        // Variável ligada a uma classificação: os rótulos da folha (CBO, CNAE, COD, bairros) também ficam
+        // sob a própria variável; os códigos especiais do dicionário da tabela, inseridos antes, prevalecem.
+        const cl = v.classificacao && this.cat.classificacoes[v.classificacao];
+        const folha = cl && v.nivelClassificacao ? cl.niveis[v.nivelClassificacao] : null;
+        if (folha) for (const [cod, rot] of Object.entries(folha)) addCat(tabela, nome, cod, rot);
       }
     }
     for (const [nome, cl] of Object.entries(this.cat.classificacoes)) {

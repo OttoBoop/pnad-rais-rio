@@ -30,7 +30,7 @@
 </header>
 
 <main id="conteudo">
-  <p class="aviso" id="aviso-parcial"><strong>Versão parcial (18/11/2026).</strong> PNAD Contínua trimestral completa (2012T1–2026T3). RAIS Estabelecimentos 2006–2025. RAIS Vínculos: os anos já publicados aparecem na tabela de Cobertura, abaixo, e os demais entram ao longo da noite. Os arquivos anuais da PNAD ainda estão em processamento. A <a href="demo/">demonstração</a> continua no ar.</p>
+  <p class="aviso" id="aviso-parcial"><strong>Atualização de 18/11/2026.</strong> PNAD Contínua e RAIS completas: PNAD trimestral de 2012T1 a 2026T3 e anuais por visita (1ª visita: 2012–2019 e 2022–2025; 5ª visita: 2016–2025); RAIS Vínculos e RAIS Estabelecimentos de 2006 a 2025, mais o arquivo Legado de 2023 à parte. Em andamento: só a validação final da RAIS contra os totais publicados pelo MTE. A <a href="demo/">demonstração</a> continua no ar.</p>
   <section id="pag-inicio" data-pagina="inicio" hidden>
     <h1>PNAD Contínua e RAIS do município do Rio</h1>
     <p class="lead">Microdados da PNAD Contínua (IBGE) e da RAIS (MTE), só do município do Rio de Janeiro, consultados no próprio navegador com SQL. Não há servidor de banco: o DuckDB-WASM lê os arquivos Parquet por partes e baixa só as colunas e os blocos de que cada consulta precisa.</p>
@@ -41,6 +41,10 @@
       <li><a href="#metodologia"><b>Metodologia</b><span>recorte, pesos, variância, quebras de série e fontes</span></a></li>
       <li><a href="#arquivos"><b>Arquivos</b><span>download de cada arquivo Parquet</span></a></li>
     </ul>
+    <h2>Consultas prontas</h2>
+    <p class="mudo">Cada cartão roda agora, no seu navegador, sobre os microdados. Os anos são os últimos publicados nos manifestos. "Ver SQL" abre a consulta no editor para você mudar.</p>
+    <div class="prontas" id="prontas"><p class="mudo">Carregando o motor…</p></div>
+    <div class="prontas-resultado" id="prontas-resultado"></div>
     <h2>Cobertura</h2>
     <p class="mudo">Tirada dos manifestos publicados (<span id="inicio-manifestos"></span>).</p>
     <div class="rolagem"><table class="dados" id="tab-cobertura"></table></div>
@@ -63,7 +67,7 @@
 
   <section id="pag-sql" data-pagina="sql" hidden>
     <h1>SQL</h1>
-    <p class="mudo">DuckDB (dialeto do DuckDB 1.4). Ctrl+Enter executa. Os nomes das tabelas e dos macros estão em "Tabelas, views e macros" e na tabela <code>catalogo</code>.</p>
+    <p class="mudo">DuckDB (dialeto do DuckDB 1.4). Os exemplos abaixo, por base, rodam na hora ou vão para o editor. Ctrl+Enter executa. Os nomes das tabelas e dos macros estão em "Tabelas, views e macros" e na tabela <code>catalogo</code>.</p>
     <div id="sql-raiz"><p class="mudo">Carregando o motor…</p></div>
   </section>
 

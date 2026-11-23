@@ -65,17 +65,36 @@ export async function desenharGrafico(alvo, linhas, plano) {
       dados = dados.filter(d => manter.has(d.serie));
     }
     const passo = Math.ceil(periodos.length / Math.max(4, Math.floor(largura / 70)));
+    // Série anual: eixo numérico, e a linha é interrompida nos anos sem dado (ex.: RAIS ainda incompleta).
+    const anual = periodos.every(p => /^\d{4}$/.test(p));
+    let escalaX;
+    if (anual) {
+      for (const d of dados) d.x = Number(d.periodo);
+      const anos = dados.map(d => d.x), a0 = Math.min(...anos), a1 = Math.max(...anos);
+      const faltam = [];
+      for (const s of series) {
+        const tem = new Set(dados.filter(d => d.serie === s).map(d => d.x));
+        for (let a = a0; a <= a1; a++) if (!tem.has(a)) faltam.push({ x: a, y: NaN, y1: NaN, y2: NaN, serie: s, periodo: String(a) });
+      }
+      if (faltam.length) notas.push(`Sem dado publicado em ${[...new Set(faltam.map(f => f.x))].join(', ')}: a linha é interrompida nesses anos.`);
+      dados = dados.concat(faltam).sort((p, q) => p.x - q.x);
+      escalaX = { type: 'linear', label: null, tickFormat: v => String(v), ticks: Math.min(a1 - a0 + 1, Math.max(4, Math.floor(largura / 60))) };
+    } else {
+      for (const d of dados) d.x = d.periodo;
+      escalaX = { type: 'point', domain: periodos, label: null, ticks: periodos.filter((_, i) => i % passo === 0), tickRotate: periodos.length > 8 ? -35 : 0 };
+    }
+    const validos = dados.filter(d => Number.isFinite(d.y));
     fig = Plot.plot({
       width: largura, height: 360, marginLeft: 64, marginBottom: 48,
       style: { background: 'transparent', color: c.texto, fontSize: '12px' },
-      x: { type: 'point', domain: periodos, label: null, ticks: periodos.filter((_, i) => i % passo === 0), tickRotate: periodos.length > 8 ? -35 : 0 },
+      x: escalaX,
       y: { grid: true, label: rotuloEixo, zero: !plano.amostral || plano.ehProporcao, tickFormat: v => num(v, Math.abs(v) >= 100 || Number.isInteger(v) ? 0 : 1) },
       color: { domain: series, range: c.series.slice(0, series.length), legend: series.length > 1 },
       marks: [
-        plano.amostral ? Plot.areaY(dados, { x: 'periodo', y1: 'y1', y2: 'y2', fill: 'serie', fillOpacity: 0.14, curve: 'linear' }) : null,
-        Plot.lineY(dados, { x: 'periodo', y: 'y', stroke: 'serie', strokeWidth: 2 }),
-        Plot.dot(dados, { x: 'periodo', y: 'y', fill: 'serie', r: 3, stroke: c.fundo, strokeWidth: 1 }),
-        Plot.tip(dados, Plot.pointerX({ x: 'periodo', y: 'y', title: titulo })),
+        plano.amostral ? Plot.areaY(dados, { x: 'x', y1: 'y1', y2: 'y2', fill: 'serie', fillOpacity: 0.14, curve: 'linear' }) : null,
+        Plot.lineY(dados, { x: 'x', y: 'y', stroke: 'serie', strokeWidth: 2 }),
+        Plot.dot(validos, { x: 'x', y: 'y', fill: 'serie', r: 3, stroke: c.fundo, strokeWidth: 1 }),
+        Plot.tip(validos, Plot.pointerX({ x: 'x', y: 'y', title: titulo })),
       ],
     });
     if (plano.amostral) notas.push('Faixa sombreada: IC 95%.');

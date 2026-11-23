@@ -85,6 +85,22 @@ main { max-width: 1240px; margin: 0 auto; padding: 8px 16px 48px; }
 .atalhos b { display: block; color: var(--accent); }
 .atalhos span { font-size: 0.85rem; color: var(--muted); }
 
+/* Consultas prontas */
+.prontas { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.cartao-pronto { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; display: flex; flex-direction: column; }
+.cartao-pronto h3 { margin: 2px 0 4px; font-size: 1rem; }
+.cartao-pronto p { margin: 0 0 8px; font-size: 0.88rem; flex: 1; }
+.cartao-pronto .acoes { margin: 0; }
+.base { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); font-weight: 600; }
+.prontas-resultado { margin-top: 14px; }
+.prontas-resultado:empty { display: none; }
+.prontas-resultado .res-cabeca h3 { font-size: 1.05rem; }
+
+.abas { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 10px; }
+.abas .aba { background: var(--card); color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px; font-size: 0.86rem; }
+.abas .aba.ativa { background: var(--accent-bg); color: var(--fg); border-color: var(--accent); font-weight: 600; }
+.titulo-exemplos { margin-top: 0.6em; }
+
 /* Tabelas */
 .rolagem { overflow-x: auto; max-width: 100%; }
 table.dados { border-collapse: collapse; font-size: 0.86rem; font-variant-numeric: tabular-nums; background: var(--card); }
