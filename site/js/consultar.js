@@ -2,7 +2,7 @@
 import { el, faixasAnos, dicaErro } from './util.js';
 import { dimensoes } from './dimensoes.js';
 import { planejar, mostrar, periodos, juntarStats } from './explorar.js';
-import { BASES, MEDIDAS, VARIAVEIS, EXEMPLOS, chaveCuradoria } from './curadoria.js';
+import { BASES, MEDIDAS, VARIAVEIS, EXEMPLOS, ROTULOS, chaveCuradoria } from './curadoria.js';
 
 const MAIS = '__mais__';
 const CURTA = '__curta__';
@@ -30,7 +30,7 @@ function hashParaEstado(hash) {
   if (!p.get('b')) return null;
   return {
     base: p.get('b'), medida: p.get('m'), por: p.get('por') || '', e: p.get('e') || '', ini: p.get('de'), fim: p.get('ate'),
-    ativos: p.get('at') !== '0', usar: p.get('usar') || '',
+    ativos: p.get('at') !== '0', usar: p.get('usar') || '', temMedida: Boolean(p.get('m')),
     conds: (p.get('f') || '').split(';').filter(Boolean).map(x => { const [dim, v] = x.split('~'); return { dim, valores: (v || '').split('|').filter(Boolean) }; }),
   };
 }
@@ -46,7 +46,18 @@ export function montarConsultar(raiz, ctx) {
   const chips = el('div', { class: 'chips', id: 'cq-exemplos' });
   const form = el('form', { class: 'painel frase', id: 'cq-form' });
   const saida = el('div', { class: 'explorar-saida', id: 'cq-saida' });
-  raiz.append(el('p', { class: 'mudo chips-titulo' }, 'Experimente:'), chips, form, saida);
+  const mudou = el('p', { class: 'aviso mudou', id: 'cq-mudou', hidden: true }, 'A pergunta mudou: o resultado abaixo é da pergunta anterior. Clique em "Ver resultado" para atualizar.');
+  raiz.append(el('p', { class: 'mudo chips-titulo' }, 'Experimente:'), chips, form, mudou, saida);
+  let hashExecutado = null; // estado da frase que gerou o resultado na tela
+  let rodando = false;
+  const naRota = () => !/^#(sql|dicionario|metodologia|arquivos)/.test(location.hash);
+  // Nome por extenso da categoria (RAIS abreviada) ou o rótulo do dicionário em caixa de frase.
+  const rotCat = (dimId, cod, bruto) => { const r = (ROTULOS[dimId.split('@')[0]] || {})[cod]; return dimId.includes('@') || r === undefined ? bonito(String(bruto)) : r; };
+  document.addEventListener('click', ev => { for (const d of form.querySelectorAll('.multi[open]')) if (!d.contains(ev.target)) d.open = false; });
+  document.addEventListener('keydown', ev => {
+    if (ev.key !== 'Escape') return;
+    for (const d of form.querySelectorAll('.multi[open]')) { d.open = false; d.querySelector('summary').focus(); }
+  });
 
   const cache = {};
   const dimsDe = chave => cache[chave] || (cache[chave] = dimensoes(cat, chave));
@@ -56,6 +67,7 @@ export function montarConsultar(raiz, ctx) {
     return VARIAVEIS[chaveCuradoria(chave)].map(g => ({ grupo: g.grupo, itens: g.itens.filter(i => ids.has(i.id)) })).filter(g => g.itens.length);
   };
   const itemCurto = (chave, id) => curtaDe(chave).flatMap(g => g.itens).find(i => i.id === id);
+  for (const b of bases) for (const i of curtaDe(b).flatMap(g => g.itens)) if (i.vazio) dimsDe(b).find(d => d.id === i.id).vazio = i.vazio;
   const nomeDim = (chave, id) => {
     const c = itemCurto(chave, id);
     if (c) return c.nome;
@@ -153,50 +165,68 @@ export function montarConsultar(raiz, ctx) {
     if (!ids.has(est.por)) est.por = '';
     if (!ids.has(est.e)) est.e = '';
     est.conds = (est.conds || []).filter(c => ids.has(c.dim));
+    for (const c of est.conds) {
+      const cats = (dimsDe(est.base).find(d => d.id === c.dim) || {}).categorias;
+      if (cats) c.valores = (c.valores || []).filter(v => cats[v] !== undefined);
+    }
     const m = ms.find(x => x.id === est.medida);
+    let ia = per.findIndex(p => p.id === est.ini), ib = per.findIndex(p => p.id === est.fim);
+    if (ia > ib) { [est.ini, est.fim] = [est.fim, est.ini]; [ia, ib] = [ib, ia]; }
+    if (m.desde) {
+      const i0 = per.findIndex(p => p.ano >= m.desde);
+      if (ia < i0) est.ini = per[i0].id;
+      if (ib < i0) est.fim = per[i0].id;
+    }
     if (m.exigePor && !est.por) est.por = (curtaDe(est.base)[0].itens.find(i => i.id === 'V2010') || curtaDe(est.base)[0].itens[0]).id;
     if (est.e && est.e === est.por) est.e = '';
   }
 
   // Menu de variável: lista curta em grupos; "mais variáveis…" troca pela busca em todas.
-  function seletorDim(chaveUI, valor, aoMudar, { vazio = null, rotulo } = {}) {
+  function seletorDim(chaveUI, valor, aoMudar, { vazio = null, rotulo, usados = [] } = {}) {
     const dims = dimsDe(est.base);
     const curta = curtaDe(est.base);
     const naCurta = !valor || curta.some(g => g.itens.some(i => i.id === valor));
     const caixa = el('span', { class: 'seletor' });
+    const semSentido = (medidasDe(est.base).find(x => x.id === est.medida) || {}).semSentido || {};
     const opcao = (id, nome) => {
       const d = dims.find(x => x.id === id);
       const disp = disponibilidade(d);
-      return el('option', { value: id, selected: id === valor, disabled: !disp.ok && id !== valor }, disp.ok ? nome : `${nome} (${disp.motivo})`);
+      const motivo = !disp.ok ? disp.motivo : semSentido[id] ? `não serve para esta medida: ${semSentido[id]}` : usados.includes(id) ? 'já está na frase' : '';
+      return el('option', { value: id, selected: id === valor, disabled: Boolean(motivo) && id !== valor }, motivo ? `${nome} (${motivo})` : nome);
     };
     const sel = el('select', { id: `cq-${chaveUI}`, 'aria-label': rotulo });
-    if (naCurta && !mais[chaveUI]) {
+    if (!mais[chaveUI]) {
       if (vazio) sel.append(el('option', { value: '' }, vazio));
+      if (!naCurta) sel.append(opcao(valor, nomeDim(est.base, valor)));
       for (const g of curta) sel.append(el('optgroup', { label: g.grupo }, g.itens.map(i => opcao(i.id, i.nome))));
       sel.append(el('option', { value: MAIS }, 'mais variáveis…'));
       sel.value = valor || '';
       caixa.append(sel);
     } else {
       const busca = el('input', { type: 'search', class: 'busca-opcao', placeholder: 'buscar em todas as variáveis…', 'aria-label': 'Buscar variável', id: `cq-${chaveUI}-busca` });
-      const todas = dims.filter(d => !d.categorias || Object.keys(d.categorias).length > 1);
+      const todas = dims.filter(d => (!d.categorias || Object.keys(d.categorias).length > 1) && !/^(UF|Capital|RM_RIDE|V1022|V1023|uf|municipio|municipio_trab)$/.test(d.variavel));
+      const curto = r => (r.length > 90 ? r.slice(0, 88) + '…' : r);
       const encher = () => {
         const q = semAcento(busca.value.trim());
         sel.innerHTML = '';
         sel.append(el('option', { value: CURTA }, '← voltar à lista curta'));
         if (vazio) sel.append(el('option', { value: '' }, vazio));
+        let n = 0;
         for (const d of todas) {
-          if (q && d.id !== valor && !semAcento(d.rotulo).includes(q)) continue;
-          sel.append(opcao(d.id, d.rotulo));
+          if (q && d.id !== valor && !(' ' + semAcento(d.rotulo).replace(/[^a-z0-9]+/g, ' ')).includes(' ' + q)) continue;
+          sel.append(opcao(d.id, curto(d.rotulo))); n++;
         }
-        sel.value = valor && todas.some(d => d.id === valor) ? valor : (vazio ? '' : CURTA);
+        if (q && !n) sel.append(el('option', { value: '', disabled: true }, `nada com "${busca.value.trim()}" em ${BASES[est.base].curto}`));
+        sel.value = valor && todas.some(d => d.id === valor) ? valor : (vazio || !n ? '' : CURTA);
       };
       busca.addEventListener('input', encher);
+      busca.addEventListener('keydown', ev => { if (ev.key === 'Enter') ev.preventDefault(); });
       encher();
       caixa.append(busca, sel);
     }
     sel.addEventListener('change', () => {
       if (sel.value === MAIS) { mais[chaveUI] = true; render(); const b = form.querySelector(`#cq-${chaveUI}-busca`); if (b) b.focus(); return; }
-      if (sel.value === CURTA) { mais[chaveUI] = false; aoMudar(''); render(); return; }
+      if (sel.value === CURTA) { mais[chaveUI] = false; render(); return; }
       aoMudar(sel.value); render();
     });
     return caixa;
@@ -205,7 +235,9 @@ export function montarConsultar(raiz, ctx) {
   // Categorias de uma condição: botão com resumo que abre busca + caixas de marcar.
   function seletorCategorias(cond, i) {
     const d = dimsDe(est.base).find(x => x.id === cond.dim);
-    const cats = d && d.categorias ? Object.entries(d.categorias).map(([c, r]) => ({ c, r: bonito(String(r)) })) : [];
+    const cats = d && d.categorias ? Object.entries(d.categorias).map(([c, r]) => ({ c, r: rotCat(cond.dim, c, r) })) : [];
+    const ic = itemCurto(est.base, cond.dim);
+    if (ic && !ic.ordinal) cats.sort((a, b) => a.r.localeCompare(b.r, 'pt-BR'));
     const det = el('details', { class: 'multi', id: `cq-cond-${i}-valores` });
     const resumo = el('summary', {});
     const escreve = () => {
@@ -233,6 +265,7 @@ export function montarConsultar(raiz, ctx) {
       if (!n) lista.append(el('p', { class: 'nota' }, 'Nenhuma categoria com esse texto.'));
     };
     busca.addEventListener('input', encher);
+    busca.addEventListener('keydown', ev => { if (ev.key === 'Enter') ev.preventDefault(); });
     det.append(resumo, el('div', { class: 'multi-painel' }, cats.length > 8 ? busca : null, lista));
     escreve(); encher();
     return det;
@@ -248,6 +281,7 @@ export function montarConsultar(raiz, ctx) {
     const ms = medidasDe(est.base);
     const m = ms.find(x => x.id === est.medida);
     const per = periodos(t);
+    const focoId = form.contains(document.activeElement) ? document.activeElement.id : '';
     form.innerHTML = '';
 
     const selMed = el('select', { id: 'cq-medida', 'aria-label': 'O que ver' }, ms.map(x => el('option', { value: x.id, selected: x.id === est.medida }, x.nome)));
@@ -255,10 +289,11 @@ export function montarConsultar(raiz, ctx) {
     const extrasMedida = [];
     if (t.ativo && !t.amostral) {
       const ca = el('input', { type: 'checkbox', id: 'cq-ativos', checked: est.ativos !== false });
-      ca.addEventListener('change', () => { est.ativos = ca.checked; });
+      ca.addEventListener('change', () => { est.ativos = ca.checked; render(); });
       extrasMedida.push(el('label', { class: 'check' }, ca, ' só os vínculos ativos em 31/12 (sem marcar, entram todos os que existiram no ano)'));
     }
-    form.append(linha('Quero ver', selMed, ...extrasMedida, m.nota ? el('p', { class: 'nota' }, m.nota) : null));
+    form.append(linha('Quero ver', selMed, ...extrasMedida, m.nota ? el('p', { class: 'nota' }, m.nota) : null,
+      est.medida === 'massa' && est.ativos === false ? el('p', { class: 'nota aviso-leve' }, 'Atenção: com todos os vínculos do ano, a soma junta empregos que não existiram ao mesmo tempo e fica maior que a folha de um mês.') : null));
 
     const selBase = el('select', { id: 'cq-base', 'aria-label': 'Base' }, bases.map(b => el('option', { value: b, selected: b === est.base }, BASES[b].nome)));
     selBase.addEventListener('change', () => { trocarBase(selBase.value); render(); });
@@ -272,13 +307,16 @@ export function montarConsultar(raiz, ctx) {
       const disp = d ? disponibilidade(d) : { ok: true };
       conds.append(el('div', { class: 'frase-cond' },
         i ? el('span', { class: 'frase-e' }, 'e') : null,
-        seletorDim(`cond-${i}`, c.dim, v => { c.dim = v; c.valores = []; if (!v) est.conds.splice(i, 1); }, { rotulo: `Condição ${i + 1}` }),
+        seletorDim(`cond-${i}`, c.dim, v => { c.dim = v; c.valores = []; if (!v) est.conds.splice(i, 1); }, { rotulo: `Condição ${i + 1}`, usados: est.conds.filter((_, j) => j !== i).map(x => x.dim) }),
         el('span', { class: 'frase-e' }, 'é'),
         seletorCategorias(c, i),
         el('button', { type: 'button', class: 'secundario pequeno', 'aria-label': 'Remover condição', onclick: () => { est.conds.splice(i, 1); render(); } }, 'tirar'),
-        disp.ok && disp.aviso ? el('p', { class: 'nota aviso-leve' }, `Atenção: ${disp.aviso}.`) : null));
+        !disp.ok ? el('p', { class: 'nota aviso-forte' }, `Sem dado no período escolhido (${disp.motivo}). Mude o período ou tire a condição.`)
+          : disp.aviso ? el('p', { class: 'nota aviso-leve' }, `Atenção: ${disp.aviso}.`) : null));
     });
-    const primeira = curtaDe(est.base)[0].itens[0].id;
+    const semS = m.semSentido || {};
+    const livres = curtaDe(est.base).flatMap(g => g.itens).map(i => i.id).filter(id => !est.conds.some(c => c.dim === id) && !semS[id] && disponibilidade(dimsDe(est.base).find(d => d.id === id)).ok);
+    const primeira = livres[0] || curtaDe(est.base)[0].itens[0].id;
     const add = el('button', { type: 'button', class: 'secundario pequeno', id: 'cq-add-cond', onclick: () => { est.conds.push({ dim: primeira, valores: [] }); render(); } },
       est.conds.length ? '+ outra condição' : '+ escolher um grupo (sem isso, entra todo mundo)');
     form.append(linha(t.chave === 'rais_estab' ? 'de quais' : 'de quem', conds, add));
@@ -287,51 +325,70 @@ export function montarConsultar(raiz, ctx) {
     const avisoSep = id => {
       const d = id && dimsDe(est.base).find(x => x.id === id);
       const disp = d ? disponibilidade(d) : null;
-      return disp && disp.ok && disp.aviso ? el('p', { class: 'nota aviso-leve' }, `Atenção: ${disp.aviso}.`) : null;
+      if (id && semS[id]) return el('p', { class: 'nota aviso-forte' }, `Esta variável não serve para esta medida (${semS[id]}). Escolha outra.`);
+      if (disp && !disp.ok) return el('p', { class: 'nota aviso-forte' }, `Sem dado no período escolhido (${disp.motivo}). Mude o período ou escolha outra variável.`);
+      return disp && disp.aviso ? el('p', { class: 'nota aviso-leve' }, `Atenção: ${disp.aviso}.`) : null;
     };
     form.append(linha(m.exigePor ? 'distribuído por' : 'separado por',
       seletorDim('por', est.por, v => { est.por = v; }, { vazio: m.exigePor ? null : '— nada (só o total) —', rotulo: 'Separado por' }), avisoSep(est.por)));
-    form.append(linha('e por', seletorDim('e', est.e, v => { est.e = v; }, { vazio: '— nada —', rotulo: 'E por' }), avisoSep(est.e)));
+    form.append(linha(m.exigePor ? 'dentro de cada' : 'e por', seletorDim('e', est.e, v => { est.e = v; }, { vazio: m.exigePor ? '— nada (o total soma 100%) —' : '— nada —', rotulo: 'E por', usados: [est.por].filter(Boolean) }), avisoSep(est.e),
+      m.exigePor && est.e ? el('p', { class: 'nota' }, 'Cada grupo desta segunda variável soma 100%.') : null));
 
     // Período
-    const sIni = el('select', { id: 'cq-ini', 'aria-label': 'Início' }, per.map(p => el('option', { value: p.id, selected: p.id === est.ini }, p.rotulo)));
-    const sFim = el('select', { id: 'cq-fim', 'aria-label': 'Fim' }, per.map(p => el('option', { value: p.id, selected: p.id === est.fim }, p.rotulo)));
+    const cedo = p => Boolean(m.desde) && p.ano < m.desde;
+    const sIni = el('select', { id: 'cq-ini', 'aria-label': 'Início' }, per.map(p => el('option', { value: p.id, selected: p.id === est.ini, disabled: cedo(p) }, p.rotulo)));
+    const sFim = el('select', { id: 'cq-fim', 'aria-label': 'Fim' }, per.map(p => el('option', { value: p.id, selected: p.id === est.fim, disabled: cedo(p) }, p.rotulo)));
     sIni.addEventListener('change', () => { est.ini = sIni.value; render(); });
     sFim.addEventListener('change', () => { est.fim = sFim.value; render(); });
     const atalho = (txt, f) => el('button', { type: 'button', class: 'secundario pequeno', onclick: () => { f(); render(); } }, txt);
     form.append(linha('em', sIni, el('span', { class: 'frase-e' }, 'até'), sFim,
       atalho('só o último', () => { est.ini = est.fim = per[per.length - 1].id; }),
-      atalho('série inteira', () => { est.ini = per[0].id; est.fim = per[per.length - 1].id; }),
+      atalho('série inteira', () => { est.ini = (per.find(p => !cedo(p)) || per[0]).id; est.fim = per[per.length - 1].id; }),
       el('p', { class: 'nota' }, est.ini === est.fim ? 'Um período só: gráfico de barras.' : 'Vários períodos: gráfico de linha, uma linha por grupo.')));
 
-    form.append(el('div', { class: 'acoes' }, el('button', { type: 'submit', id: 'cq-ver' }, 'Ver resultado')));
+    form.append(el('div', { class: 'acoes' }, el('button', { type: 'submit', id: 'cq-ver', disabled: rodando }, rodando ? 'Calculando…' : 'Ver resultado')));
+    if (focoId) { const f = form.querySelector('#' + CSS.escape(focoId)); if (f) f.focus(); }
+    // A URL e o link "Consultar" acompanham a frase; o resultado antigo fica esmaecido até rodar de novo.
+    const h = estadoParaHash(est);
+    if (naRota()) { try { history.replaceState(null, '', h); } catch { /* sem history */ } }
+    for (const a of document.querySelectorAll('a[data-rota="consultar"], a.marca')) a.setAttribute('href', h);
+    const velho = hashExecutado !== null && h !== hashExecutado;
+    saida.classList.toggle('desatualizado', velho);
+    mudou.hidden = !velho;
   }
 
   function tituloFrase() {
     const m = medidasDe(est.base).find(x => x.id === est.medida);
     const { a, b } = intervalo();
+    const t0 = cat.tabelas[est.base];
     const partes = [m.nome.replace(/^(o|a|os|as) /, '').replace(/ \(.*\)$/, '')];
     for (const c of est.conds) {
       if (!c.valores.length) continue;
       const d = dimsDe(est.base).find(x => x.id === c.dim);
-      const rot = c.valores.map(v => bonito(String((d.categorias || {})[v] ?? v)));
+      const rot = c.valores.map(v => rotCat(c.dim, v, (d.categorias || {})[v] ?? v));
       partes.push(`${nomeDim(est.base, c.dim).replace(/ \(.*\)$/, '').replace(/^Situação: .*/, 'situação')}: ${rot.length > 3 ? `${rot.length} categorias` : rot.join(' ou ')}`);
     }
     let s = partes.join(' · ');
     const seps = [est.por, est.e].filter(Boolean).map(id => nomeDim(est.base, id).replace(/ \(.*\)$/, '').toLowerCase());
-    if (seps.length) s += `, por ${seps.join(' e ')}`;
+    if (t0.ativo && !t0.amostral) s += est.ativos !== false ? ' (ativos em 31/12)' : ' (todos os vínculos do ano)';
+    if (m.exigePor && seps.length === 2) s = `${partes.join(' · ')}: ${seps[0]} dentro de cada ${seps[1]} (cada ${seps[1]} soma 100%)`;
+    else if (seps.length) s += `, por ${seps.join(' e ')}`;
     return `${s} — ${BASES[est.base].curto}, ${a.id === b.id ? a.rotulo : `${a.rotulo} a ${b.rotulo}`}`;
   }
 
   async function rodar() {
+    if (rodando) return;
     normalizar();
     est.avisoTroca = '';
+    rodando = true;
+    const hRodado = estadoParaHash(est);
     const t = cat.tabelas[est.base];
     const dims = dimsDe(est.base);
     const m = medidasDe(est.base).find(x => x.id === est.medida);
-    const btn = form.querySelector('#cq-ver');
     let plano = null;
-    if (btn) btn.disabled = true;
+    render();
+    hashExecutado = null;
+    saida.classList.remove('desatualizado'); mudou.hidden = true;
     saida.innerHTML = '';
     saida.append(el('p', { class: 'mudo', role: 'status' }, 'Calculando…'));
     try {
@@ -340,12 +397,12 @@ export function montarConsultar(raiz, ctx) {
       const vazias = est.conds.filter(c => !c.valores.length);
       if (vazias.length) throw new Error(`Escolha ao menos uma categoria em "${nomeDim(est.base, vazias[0].dim)}", ou tire a condição.`);
       for (const id of [est.por, est.e, ...est.conds.map(c => c.dim)].filter(Boolean)) {
+        if ((m.semSentido || {})[id]) throw new Error(`"${nomeDim(est.base, id)}" não serve para ${m.nome} (${m.semSentido[id]}). O resultado seria 0% ou 100% em tudo. Tire essa variável ou troque a medida.`);
         const disp = disponibilidade(dims.find(d => d.id === id));
         if (!disp.ok) throw new Error(`"${nomeDim(est.base, id)}" não tem dado no período escolhido (${disp.motivo}).`);
       }
       const p = { base: est.base, ...m.est, ativos: est.ativos, linha: est.por, coluna: est.e, ini: est.ini, fim: est.fim,
         filtros: est.conds.map(c => ({ dim: c.dim, valores: c.valores })) };
-      try { history.replaceState(null, '', estadoParaHash(est)); } catch { /* sem history */ }
       plano = await planejar(cat, motor, t, dims, p);
       const r = await motor.consultar(plano.sql, { origem: 'consultar', silencioso: Boolean(plano.previa) });
       if (plano.previa) motor.emitir('consulta', juntarStats(plano.previa, r.stats));
@@ -355,8 +412,13 @@ export function montarConsultar(raiz, ctx) {
       plano.nomeColuna = est.e ? nomeDim(est.base, est.e) : null;
       plano.soRotulo = true;
       plano.decimais = m.decimais;
+      plano.temFiltro = est.conds.length > 0;
+      plano.eixo = `${m.nome.replace(/^(o|a|os|as) /, '').replace(/ \(.*\)$/, '')}${m.unidade && m.unidade !== 'pessoas' && m.unidade !== 'vínculos' && m.unidade !== 'estabelecimentos' ? ` (${m.unidade})` : ''}`;
       plano.ordenarBarras = Boolean(est.por) && !(itemCurto(est.base, est.por) || {}).ordinal;
-      for (const x of r.linhas) for (const k of ['linha_rotulo', 'coluna_rotulo']) if (typeof x[k] === 'string') x[k] = bonito(x[k]);
+      for (const x of r.linhas) {
+        if (typeof x.linha_rotulo === 'string') x.linha_rotulo = rotCat(est.por, String(x.linha), x.linha_rotulo);
+        if (typeof x.coluna_rotulo === 'string') x.coluna_rotulo = rotCat(est.e, String(x.coluna), x.coluna_rotulo);
+      }
       mostrar(saida, plano, r, ctx);
       const acoes = saida.querySelector('.acoes');
       if (acoes) {
@@ -367,13 +429,18 @@ export function montarConsultar(raiz, ctx) {
         acoes.append(copiar);
       }
       if (!r.linhas.length) saida.append(el('p', { class: 'aviso' }, 'Nenhum registro com essas condições.'));
+      if (m.est.medida === 'taxa' && r.linhas.length > 1 && r.linhas.every(x => x.estimativa === 0 || x.estimativa === 1 || x.estimativa === null)) {
+        saida.prepend(el('p', { class: 'aviso' }, 'Todas as taxas saíram 0% ou 100%: provavelmente a variável escolhida só existe para uma parte das pessoas (por exemplo, só para ocupados) e não serve para esta medida.'));
+      }
+      hashExecutado = hRodado;
     } catch (e) {
       if (plano && plano.previa && e.stats) motor.emitir('consulta', juntarStats(plano.previa, e.stats));
       saida.innerHTML = '';
       saida.append(el('p', { class: 'erro', id: 'cq-erro' }, String(e.message || e) + dicaErro(e.message || e)));
       if (plano && plano.sql) saida.append(el('button', { type: 'button', class: 'secundario', onclick: () => ctx.abrirNoEditor(plano.sql) }, 'Abrir no SQL'));
     } finally {
-      if (btn) btn.disabled = false;
+      rodando = false;
+      render();
     }
   }
 
@@ -381,9 +448,23 @@ export function montarConsultar(raiz, ctx) {
 
   function definir(novo, executar = true) {
     if (!novo || !bases.includes(novo.base)) return;
+    if (novo.usar) {
+      // Vindo do Dicionário: a variável entra na frase que já estava montada (separação ou condição a preencher).
+      const v = novo.usar === 'sep' ? novo.por : ((novo.conds || [])[0] || {}).dim;
+      if (novo.base !== est.base) trocarBase(novo.base);
+      normalizar();
+      if (v && dimsDe(est.base).some(d => d.id === v)) {
+        if (novo.usar === 'sep') { if (!est.por || est.por === v) est.por = v; else est.e = v; }
+        else if (!est.conds.some(c => c.dim === v)) est.conds.push({ dim: v, valores: [] });
+        if (!itemCurto(est.base, v)) mais[novo.usar === 'sep' ? (est.por === v ? 'por' : 'e') : `cond-${est.conds.length - 1}`] = false;
+      }
+      render();
+      form.scrollIntoView({ block: 'nearest' });
+      return;
+    }
     Object.assign(est, { conds: [], por: '', e: '', ini: null, fim: null, ativos: true }, JSON.parse(JSON.stringify(novo)));
+    for (const k of ['usar', 'temMedida']) delete est[k];
     for (const k of Object.keys(mais)) delete mais[k];
-    // Vindo do Dicionário: "usar" = sep (vira separação) ou cond (vira condição a preencher).
     render();
     if (executar) rodar();
   }
@@ -394,8 +475,13 @@ export function montarConsultar(raiz, ctx) {
   }
 
   const doHash = hashParaEstado(location.hash);
-  if (doHash) definir(doHash, !doHash.usar);
+  if (doHash) definir(doHash, !doHash.usar && doHash.temMedida);
   else { render(); saida.append(el('p', { class: 'mudo' }, 'Monte a frase acima e clique em "Ver resultado", ou comece por um dos exemplos.')); }
 
-  return { definir, rodar, estado: () => JSON.parse(JSON.stringify(est)), aoHash: () => { const h = hashParaEstado(location.hash); if (h) definir(h, !h.usar); } };
+  return { definir, rodar, estado: () => JSON.parse(JSON.stringify(est)), aoHash: () => {
+      // Voltar para a página com a mesma frase (menu, botão Voltar) não mexe em nada nem roda de novo.
+      if (location.hash === estadoParaHash(est)) return;
+      const h = hashParaEstado(location.hash);
+      if (h) definir(h, !h.usar);
+    } };
 }

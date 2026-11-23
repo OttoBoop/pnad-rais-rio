@@ -43,14 +43,14 @@ export async function desenharGrafico(alvo, linhas, plano) {
     periodo: x._periodo, serie: serieDe(x), linha: x._linha || 'Município do Rio', coluna: x._coluna || null,
     y: x[campo] * escala,
     y1: plano.amostral ? (x[campo] >= 0 ? Math.max(0, x.ic95_inf) : x.ic95_inf) * escala : null, y2: plano.amostral ? x.ic95_sup * escala : null,
-    cv: x.cv, aviso: x._aviso ? x._aviso.texto : '', n: plano.amostral ? x.n_amostra : x.registros,
+    vazio: Boolean(x._vazio), cv: x.cv, aviso: x._aviso ? x._aviso.texto : '', n: plano.amostral ? x.n_amostra : x.registros,
   }));
   if (!dados.length) return;
   const periodos = [...new Set(dados.map(d => d.periodo))];
   const largura = Math.max(300, Math.min(1100, alvo.clientWidth || 640));
   const fmtY = v => num(v, plano.amostral ? (escala === 100 ? 1 : 2) : (Math.abs(v) >= 1000 ? 0 : 2)) + unidade;
   const titulo = d => `${d.serie}\n${d.periodo}: ${fmtY(d.y)}${d.y1 !== null ? `\nIC 95%: ${fmtY(d.y1)} a ${fmtY(d.y2)}\nCV: ${num(d.cv * 100, 1)}%${d.aviso ? ` (${d.aviso})` : ''}` : ''}\n${plano.amostral ? 'n amostral' : 'registros'}: ${num(d.n)}`;
-  const rotuloEixo = plano.amostral ? (unidade ? 'estimativa (%)' : 'estimativa') : (plano.medida === 'contagem' ? 'contagem' : 'valor');
+  const rotuloEixo = plano.eixo ? plano.eixo : plano.amostral ? (unidade ? 'estimativa (%)' : 'estimativa') : (plano.medida === 'contagem' ? 'contagem' : 'valor');
   const notas = [];
   let fig, legenda = [];
 
@@ -109,8 +109,9 @@ export async function desenharGrafico(alvo, linhas, plano) {
     const temColuna = dados.some(d => d.coluna);
     const total = l => dados.filter(d => d.linha === l).reduce((a, d) => a + d.y, 0);
     if (plano.ordenarBarras) {
-      const tot = new Map([...new Set(dados.map(d => d.linha))].map(l => [l, total(l)]));
-      dados.sort((a, b) => tot.get(b.linha) - tot.get(a.linha));
+      const maior = l => Math.max(...dados.filter(d => d.linha === l).map(d => d.y));
+      const tot = new Map([...new Set(dados.map(d => d.linha))].map(l => [l, plano.aditivo ? total(l) : maior(l)]));
+      dados.sort((a, b) => (a.vazio - b.vazio) || (tot.get(b.linha) - tot.get(a.linha)));
     }
     let linhasUnicas = [...new Set(dados.map(d => d.linha))];
     const maxLinhas = temColuna ? 30 : MAX_BARRAS;

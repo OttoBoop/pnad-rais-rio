@@ -68,8 +68,8 @@ function nomeNivel(n) {
 }
 
 // Faixas de idade (convenção do site, ajustável no SQL).
-const FAIXAS_IDADE = ['00 a 13', '14 a 17', '18 a 24', '25 a 29', '30 a 39', '40 a 49', '50 a 59', '60 ou mais'];
-const FAIXA_IDADE = x => `CASE WHEN ${x} IS NULL THEN NULL WHEN ${x} < 14 THEN '00 a 13' WHEN ${x} < 18 THEN '14 a 17' WHEN ${x} < 25 THEN '18 a 24' WHEN ${x} < 30 THEN '25 a 29' WHEN ${x} < 40 THEN '30 a 39' WHEN ${x} < 50 THEN '40 a 49' WHEN ${x} < 60 THEN '50 a 59' ELSE '60 ou mais' END`;
+const FAIXAS_IDADE = ['0 a 13', '14 a 17', '18 a 24', '25 a 29', '30 a 39', '40 a 49', '50 a 59', '60 ou mais'];
+const FAIXA_IDADE = x => `CASE WHEN ${x} IS NULL THEN NULL WHEN ${x} < 14 THEN '0 a 13' WHEN ${x} < 18 THEN '14 a 17' WHEN ${x} < 25 THEN '18 a 24' WHEN ${x} < 30 THEN '25 a 29' WHEN ${x} < 40 THEN '30 a 39' WHEN ${x} < 50 THEN '40 a 49' WHEN ${x} < 60 THEN '50 a 59' ELSE '60 ou mais' END`;
 
 export function dimensoes(cat, chave) {
   const t = cat.tabelas[chave];

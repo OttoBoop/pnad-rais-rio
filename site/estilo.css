@@ -208,3 +208,9 @@ button:disabled { opacity: 0.55; cursor: progress; }
 .seg-b:last-child { border-right: 0; }
 .seg-b[aria-pressed="true"] { background: var(--serie-1); color: #fff; }
 .dic-usar { font-size: 0.88rem; margin: 6px 0 2px; }
+
+#cq-saida .rolagem { max-height: 560px; overflow-y: auto; }
+#cq-saida.desatualizado > * { opacity: 0.45; }
+.mudou { margin: 12px 0 0; }
+.aviso-forte { color: #b3261e; }
+@media (prefers-color-scheme: dark) { .aviso-forte { color: #f2a19b; } }

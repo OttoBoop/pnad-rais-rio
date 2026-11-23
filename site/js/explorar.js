@@ -201,7 +201,7 @@ export async function planejar(cat, motor, t, dims, est) {
     agregado = `${f}(${y})`;
     contar = `count(${y})`;
     if (est.zeros !== false) onde.push(`${y} > 0`);
-    rotuloMedida = `${{ soma: 'soma', media: 'média', mediana: 'mediana' }[est.medida]} de ${est.y}${est.zeros !== false ? ' (exclui nulos e zeros)' : ''}`;
+    rotuloMedida = `${{ soma: 'soma', media: 'média', mediana: 'mediana' }[est.medida]} de ${est.y}${est.zeros !== false ? ' (exclui nulos e zeros)' : ''}${t.ativo ? (est.ativos !== false ? ', só vínculos ativos em 31/12' : ', todos os vínculos do ano') : ''}`;
   }
   onde.push(...extras);
   cabecalho.push(`-- Medida: ${rotuloMedida}. Registro administrativo: sem peso e sem erro amostral.`);
@@ -228,7 +228,7 @@ function botaoVerSQL(ctx, sql) {
 
 function rotuloCat(r, campo, dim, soRotulo = false) {
   const v = r[campo];
-  if (v === null || v === undefined) return dim && dim.nulo ? `(vazio: ${dim.nulo})` : '(vazio)';
+  if (v === null || v === undefined) return dim && dim.vazio ? dim.vazio : (dim && dim.nulo ? `(vazio: ${dim.nulo})` : (soRotulo ? 'Sem informação' : '(vazio)'));
   const rot = r[campo + '_rotulo'];
   return rot ? (soRotulo ? rot : `${v} · ${rot}`) : String(v);
 }
@@ -243,12 +243,13 @@ export function mostrar(saida, plano, r, ctx) {
   window.__ultimoExplorar = { sql: plano.sql, colunas: r.colunas, linhas: r.linhas, stats: { ms: tot.ms, dados: { bytes: tot.bytes, req: tot.req } } };
   saida.append(el('div', { class: 'res-cabeca' },
     plano.semTitulo ? null : el('h3', {}, (plano.titulo || plano.rotuloMedida).replace(/^./, c => c.toUpperCase())),
-    plano.titulo ? el('p', { class: 'nota' }, `Como foi calculado: ${plano.rotuloMedida}.${plano.notaMedida ? ' ' + plano.notaMedida : ''}`) : null,
+    plano.titulo && plano.notaMedida ? el('p', { class: 'nota' }, plano.notaMedida) : null,
     el('p', { class: 'mudo', id: 'ex-stats' }, `${num(r.linhas.length)} linhas · ${segundos(tot.ms)} · ${mb(tot.bytes)} baixados em ${tot.req} requisições${p ? ' (em duas consultas: categorias e estimativas)' : ''}${tot.criados.length ? ` · abriu ${tot.criados.join(', ')}` : ''}`)));
 
   const A = t.colAno || 'ano', T = t.colTrimestre;
-  const linhas = r.linhas.map(x => {
+  const linhas = r.linhas.filter(x => !(plano.amostral && plano.titulo && Number(x.n_amostra) === 0)).map(x => {
     const o = { ...x };
+    o._vazio = Boolean(plano.linha) && (x.linha === null || x.linha === undefined);
     o._periodo = T ? `${x[A]}T${x[T]}` : String(x[plano.amostral ? A : 'ano']);
     if (plano.linha) o._linha = rotuloCat(x, 'linha', plano.linha, plano.soRotulo);
     if (plano.coluna) o._coluna = rotuloCat(x, 'coluna', plano.coluna, plano.soRotulo);
@@ -261,13 +262,19 @@ export function mostrar(saida, plano, r, ctx) {
   // Registro administrativo com separação: quanto cada grupo é do total do período.
   const comPct = !plano.amostral && plano.aditivo && Boolean(plano.linha);
   if (comPct) {
+    // Com duas separações, a parcela é dentro de cada grupo da primeira (ex.: composição por porte dentro do bairro).
+    const chave = x => (plano.coluna ? `${x._periodo}\u0001${x._linha}` : x._periodo);
     const tot = {};
-    for (const x of linhas) tot[x._periodo] = (tot[x._periodo] || 0) + Number(x.valor || 0);
-    linhas.forEach((x, i) => { x._pct = tot[x._periodo] ? Number(x.valor) / tot[x._periodo] : null; r.linhas[i].pct_do_total = x._pct; });
+    for (const x of linhas) tot[chave(x)] = (tot[chave(x)] || 0) + Number(x.valor || 0);
+    for (const x of linhas) x._pct = tot[chave(x)] ? Number(x.valor) / tot[chave(x)] : null;
   }
-  if (plano.ordenarBarras && umPeriodo && !plano.coluna) {
+  const nomePct = plano.coluna ? `% dentro de ${(plano.nomeLinha || 'cada grupo').toLowerCase()}` : `% do total${plano.temFiltro ? ' filtrado' : ''}`;
+  if (plano.ordenarBarras && umPeriodo) {
+    // Mesma ordem do gráfico: grupos da primeira separação do maior para o menor; sem informação por último.
     const campo = plano.amostral ? 'estimativa' : 'valor';
-    linhas.sort((a, b) => Number(b[campo]) - Number(a[campo]));
+    const peso = new Map();
+    for (const x of linhas) { const v = Number(x[campo]) || 0; peso.set(x._linha, plano.aditivo ? (peso.get(x._linha) || 0) + v : Math.max(peso.get(x._linha) ?? -Infinity, v)); }
+    linhas.sort((a, b) => (a._vazio - b._vazio) || (peso.get(b._linha) - peso.get(a._linha)));
   }
   const colunasCSV = r.colunas.concat(comPct ? ['pct_do_total'] : [], plano.amostral ? ['aviso_cv'] : []);
   const linhasCSV = () => linhas.map(x => { const o = {}; for (const c of r.colunas) o[c] = x[c]; if (comPct) o.pct_do_total = x._pct; if (plano.amostral) o.aviso_cv = x._aviso.texto; return o; });
@@ -313,7 +320,9 @@ export function mostrar(saida, plano, r, ctx) {
 
   // Tabela
   const fmtEst = v => plano.amostral ? (plano.ehProporcao ? pct(v, 2) : num(v, plano.decimais ?? 2)) : (plano.ehMonetario ? num(v, 2) : num(v, Number.isInteger(v) ? 0 : 2));
-  const cab = ['Período', ...(plano.linha ? [plano.nomeLinha || 'Linha'] : []), ...(plano.coluna ? [plano.nomeColuna || 'Coluna'] : [])];
+  // IC de valor que não pode ser negativo (pessoas, %, reais): o limite de baixo para em zero na tela; o CSV traz o valor calculado.
+  const icInf = x => (Number(x.estimativa) >= 0 ? Math.max(0, x.ic95_inf) : x.ic95_inf);
+  const cab = ['Período', ...(plano.linha ? [plano.nomeLinha || 'Grupo'] : []), ...(plano.coluna ? [plano.nomeColuna || 'Subgrupo'] : [])];
   const tab = el('table', { class: 'dados', id: 'ex-tabela' });
   if (plano.amostral) {
     tab.append(el('thead', {}, el('tr', {}, [...cab, 'Estimativa', 'Erro-padrão', 'IC 95%', 'CV', 'n amostral', 'Aviso'].map(c => el('th', {}, c)))));
@@ -321,15 +330,15 @@ export function mostrar(saida, plano, r, ctx) {
       el('td', {}, x._periodo), plano.linha ? el('td', {}, x._linha) : null, plano.coluna ? el('td', {}, x._coluna) : null,
       el('td', { class: 'num' }, fmtEst(x.estimativa)),
       el('td', { class: 'num' }, plano.ehProporcao ? num(x.ep * 100, 2) + ' p.p.' : num(x.ep, plano.decimais ?? 2)),
-      el('td', { class: 'num' }, `${fmtEst(x.ic95_inf)} a ${fmtEst(x.ic95_sup)}`),
+      el('td', { class: 'num' }, `${fmtEst(icInf(x))} a ${fmtEst(x.ic95_sup)}`),
       el('td', { class: 'num' }, pct(x.cv, 1)),
       el('td', { class: 'num' }, num(x.n_amostra)),
       el('td', {}, x._aviso.texto)))));
   } else {
-    tab.append(el('thead', {}, el('tr', {}, [...cab, 'Valor', ...(comPct ? ['% do total'] : []), 'Registros'].map(c => el('th', {}, c)))));
+    tab.append(el('thead', {}, el('tr', {}, [...cab, 'Valor', ...(comPct ? [nomePct] : []), ...(plano.medida === 'contagem' ? [] : ['Registros'])].map(c => el('th', {}, c)))));
     tab.append(el('tbody', {}, linhas.map(x => el('tr', {},
       el('td', {}, x._periodo), plano.linha ? el('td', {}, x._linha) : null, plano.coluna ? el('td', {}, x._coluna) : null,
-      el('td', { class: 'num' }, fmtEst(x.valor)), comPct ? el('td', { class: 'num' }, x._pct === null ? '—' : pct(x._pct, 1)) : null, el('td', { class: 'num' }, num(x.registros))))));
+      el('td', { class: 'num' }, fmtEst(x.valor)), comPct ? el('td', { class: 'num' }, x._pct === null ? '—' : pct(x._pct, 1)) : null, plano.medida === 'contagem' ? null : el('td', { class: 'num' }, num(x.registros))))));
   }
   const caixaTab = el('div', { class: 'rolagem' }, tab);
   if (plano.linha && plano.coluna) {
@@ -341,8 +350,8 @@ export function mostrar(saida, plano, r, ctx) {
     const cruz = el('table', { class: 'dados', id: 'ex-cruzada' },
       el('thead', {}, el('tr', {}, ['Período', plano.nomeLinha || 'Linha', ...cols].map(c => el('th', {}, c)))),
       el('tbody', {}, chaves.map(k => { const [p, l] = k.split('\u0001'); return el('tr', {}, el('td', {}, p), el('td', {}, l),
-        cols.map(c => { const x = mapa.get(`${k}\u0001${c}`); return el('td', { class: `num ${x && x._aviso ? x._aviso.classe : ''}`, title: x && plano.amostral ? `IC 95%: ${fmtEst(x.ic95_inf)} a ${fmtEst(x.ic95_sup)} · CV ${pct(x.cv, 1)} · n ${num(x.n_amostra)}` : '' }, x ? fmtEst(x[campo]) : '—'); })); })));
-    const caixaCruz = el('div', { class: 'rolagem' }, cruz, plano.amostral ? el('p', { class: 'nota' }, 'Passe o mouse numa célula para ver IC 95%, CV e n. A tabela completa tem todas as colunas.') : null);
+        cols.map(c => { const x = mapa.get(`${k}\u0001${c}`); return el('td', { class: `num ${x && x._aviso ? x._aviso.classe : ''}`, title: x && plano.amostral ? `IC 95%: ${fmtEst(icInf(x))} a ${fmtEst(x.ic95_sup)} · CV ${pct(x.cv, 1)} · n ${num(x.n_amostra)}` : '' }, x ? fmtEst(x[campo]) : '—'); })); })));
+    const caixaCruz = el('div', { class: 'rolagem' }, cruz, plano.amostral ? el('p', { class: 'nota' }, 'A tabela cruzada mostra só o valor; IC 95%, CV e n estão na tabela completa (e ao passar o mouse na célula).') : null);
     caixaCruz.hidden = true;
     const seg = el('div', { class: 'seg', id: 'ex-tabelas', role: 'group', 'aria-label': 'Formato da tabela' });
     const bt = (txt, cruzada) => { const b = el('button', { type: 'button', class: 'seg-b', 'aria-pressed': String(!cruzada) }, txt);
@@ -351,7 +360,7 @@ export function mostrar(saida, plano, r, ctx) {
     saida.append(seg, caixaTab, caixaCruz);
   } else saida.append(caixaTab);
 
-  if (plano.amostral) saida.append(el('p', { class: 'nota' }, 'n amostral = pessoas na amostra que entram no denominador. Linhas em amarelo: CV entre 15% e 30%; em vermelho: CV acima de 30%.'));
+  if (plano.amostral) saida.append(el('p', { class: 'nota' }, 'n amostral = pessoas na amostra que entram no denominador. O limite de baixo do IC para em zero quando o cálculo daria número negativo. Linhas em amarelo: CV entre 15% e 30%; em vermelho: CV acima de 30%.'));
 
   desenhar();
 }

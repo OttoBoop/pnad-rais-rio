@@ -52,7 +52,6 @@ export function montarDicionario(raiz, ctx) {
     const v = e.v;
     const meta = [
       el('span', { class: 'etiqueta' }, e.titulo),
-      v.tipo ? el('span', { class: 'etiqueta' }, v.tipo) : null,
       v.anos ? el('span', { class: 'etiqueta', title: 'anos com algum valor não nulo no Rio' }, faixasAnos(v.anos)) : null,
       v.classificacao ? el('span', { class: 'etiqueta' }, `códigos em ${v.classificacao}`) : null,
     ];
@@ -81,7 +80,7 @@ export function montarDicionario(raiz, ctx) {
     if (!e.classificacao && BASES[e.tabela] && e.cats.length > 1) {
       const b = encodeURIComponent(e.tabela), n = encodeURIComponent(e.nome);
       det.append(el('p', { class: 'dic-usar' }, 'Usar na consulta: ',
-        el('a', { href: `#consultar?b=${b}&por=${n}`, 'data-usar': 'sep' }, 'separar por esta variável'), ' · ',
+        el('a', { href: `#consultar?b=${b}&por=${n}&usar=sep`, 'data-usar': 'sep' }, 'separar por esta variável'), ' · ',
         el('a', { href: `#consultar?b=${b}&f=${n}~&usar=cond`, 'data-usar': 'cond' }, 'escolher um grupo dela')));
     }
     if (v.categorias_por_ano) det.append(el('p', { class: 'nota' }, `As categorias mudam entre anos (${Object.keys(v.categorias_por_ano).join(', ')}); a lista acima junta todas. No SQL: dic_categorias.`));
