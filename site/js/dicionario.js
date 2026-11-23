@@ -1,5 +1,6 @@
 // Dicionário: busca por código, descrição e rótulo de categoria, com os anos em que a variável existe.
 import { el, esc, faixasAnos, num } from './util.js';
+import { BASES } from './curadoria.js';
 
 function normalizar(s) {
   return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
@@ -76,6 +77,12 @@ export function montarDicionario(raiz, ctx) {
         el('div', { class: 'rolagem' }, tab),
         e.cats.length > 400 ? el('p', { class: 'nota' }, 'Lista cortada em 400; a tabela dic_categorias tem todas.') : null);
       det.append(d);
+    }
+    if (!e.classificacao && BASES[e.tabela] && e.cats.length > 1) {
+      const b = encodeURIComponent(e.tabela), n = encodeURIComponent(e.nome);
+      det.append(el('p', { class: 'dic-usar' }, 'Usar na consulta: ',
+        el('a', { href: `#consultar?b=${b}&por=${n}`, 'data-usar': 'sep' }, 'separar por esta variável'), ' · ',
+        el('a', { href: `#consultar?b=${b}&f=${n}~&usar=cond`, 'data-usar': 'cond' }, 'escolher um grupo dela')));
     }
     if (v.categorias_por_ano) det.append(el('p', { class: 'nota' }, `As categorias mudam entre anos (${Object.keys(v.categorias_por_ano).join(', ')}); a lista acima junta todas. No SQL: dic_categorias.`));
     return det;

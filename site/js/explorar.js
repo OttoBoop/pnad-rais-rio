@@ -1,7 +1,7 @@
 // Gerador de SQL dos cruzamentos (planejar) e exibição do resultado (mostrar): tabela, gráfico e avisos.
 // A tela que monta os parâmetros é consultar.js.
 import { el, esc, num, pct, mb, segundos, ident, literal, strSQL, paraCSV, baixarTexto, dicaErro } from './util.js';
-import { desenharGrafico } from './grafico.js';
+import { desenharGrafico, tiposGrafico, baixarPNG } from './grafico.js';
 
 export const CV_CAUTELA = 0.15;
 export const CV_NAO_CONFIAVEL = 0.30;
@@ -256,6 +256,22 @@ export function mostrar(saida, plano, r, ctx) {
     return o;
   });
 
+  plano.aditivo = ['contagem', 'soma', 'total'].includes(plano.medida);
+  const umPeriodo = new Set(linhas.map(x => x._periodo)).size <= 1;
+  // Registro administrativo com separação: quanto cada grupo é do total do período.
+  const comPct = !plano.amostral && plano.aditivo && Boolean(plano.linha);
+  if (comPct) {
+    const tot = {};
+    for (const x of linhas) tot[x._periodo] = (tot[x._periodo] || 0) + Number(x.valor || 0);
+    linhas.forEach((x, i) => { x._pct = tot[x._periodo] ? Number(x.valor) / tot[x._periodo] : null; r.linhas[i].pct_do_total = x._pct; });
+  }
+  if (plano.ordenarBarras && umPeriodo && !plano.coluna) {
+    const campo = plano.amostral ? 'estimativa' : 'valor';
+    linhas.sort((a, b) => Number(b[campo]) - Number(a[campo]));
+  }
+  const colunasCSV = r.colunas.concat(comPct ? ['pct_do_total'] : [], plano.amostral ? ['aviso_cv'] : []);
+  const linhasCSV = () => linhas.map(x => { const o = {}; for (const c of r.colunas) o[c] = x[c]; if (comPct) o.pct_do_total = x._pct; if (plano.amostral) o.aviso_cv = x._aviso.texto; return o; });
+
   if (plano.amostral) {
     const ruins = linhas.filter(x => x._aviso.classe === 'cv-ruim').length;
     const caut = linhas.filter(x => x._aviso.classe === 'cv-cautela').length;
@@ -268,12 +284,31 @@ export function mostrar(saida, plano, r, ctx) {
   }
 
   const botoes = el('div', { class: 'acoes' },
-    el('button', { type: 'button', class: 'secundario', id: 'ex-csv', onclick: () => baixarTexto(`${t.chave}_${plano.medida}.csv`, paraCSV(r.colunas.concat(plano.amostral ? ['aviso_cv'] : []), r.linhas.map((x, i) => plano.amostral ? { ...x, aviso_cv: linhas[i]._aviso.texto } : x))) }, 'CSV'),
-    el('button', { type: 'button', class: 'secundario', onclick: () => baixarTexto(`${t.chave}_${plano.medida}_excel.csv`, paraCSV(r.colunas.concat(plano.amostral ? ['aviso_cv'] : []), r.linhas.map((x, i) => plano.amostral ? { ...x, aviso_cv: linhas[i]._aviso.texto } : x), 'br')) }, 'CSV (Excel pt-BR)'),
+    el('button', { type: 'button', class: 'secundario', id: 'ex-csv', onclick: () => baixarTexto(`${t.chave}_${plano.medida}.csv`, paraCSV(colunasCSV, linhasCSV())) }, 'CSV'),
+    el('button', { type: 'button', class: 'secundario', onclick: () => baixarTexto(`${t.chave}_${plano.medida}_excel.csv`, paraCSV(colunasCSV, linhasCSV(), 'br')) }, 'CSV (Excel pt-BR)'),
+    el('button', { type: 'button', class: 'secundario', id: 'ex-png', onclick: () => baixarPNG(ultimoGrafico, plano.titulo || plano.rotuloMedida, `${t.chave}_${plano.medida}.png`).catch(e => console.error(e)) }, 'Baixar gráfico (PNG)'),
     botaoVerSQL(ctx, plano.sql));
   saida.append(botoes);
 
+  let ultimoGrafico = null;
   const graf = el('div', { class: 'grafico', id: 'ex-grafico' });
+  const desenhar = () => desenharGrafico(graf, linhas, plano).then(g => { ultimoGrafico = g; })
+    .catch(e => { graf.innerHTML = ''; graf.append(el('p', { class: 'nota' }, 'Gráfico indisponível: ' + esc(e.message || e))); });
+  const tipos = tiposGrafico(plano, linhas);
+  if (tipos.length > 1) {
+    if (!tipos.some(x => x.id === plano.tipoGrafico)) plano.tipoGrafico = tipos[0].id;
+    const grupo = el('div', { class: 'seg', id: 'ex-tipos', role: 'group', 'aria-label': 'Tipo de gráfico' });
+    for (const tp of tipos) {
+      const b = el('button', { type: 'button', class: 'seg-b', 'data-tipo': tp.id, 'aria-pressed': String(tp.id === plano.tipoGrafico) }, tp.nome);
+      b.addEventListener('click', () => {
+        plano.tipoGrafico = tp.id;
+        for (const o of grupo.children) o.setAttribute('aria-pressed', String(o === b));
+        desenhar();
+      });
+      grupo.append(b);
+    }
+    saida.append(grupo);
+  }
   saida.append(graf);
 
   // Tabela
@@ -291,13 +326,32 @@ export function mostrar(saida, plano, r, ctx) {
       el('td', { class: 'num' }, num(x.n_amostra)),
       el('td', {}, x._aviso.texto)))));
   } else {
-    tab.append(el('thead', {}, el('tr', {}, [...cab, 'Valor', 'Registros'].map(c => el('th', {}, c)))));
+    tab.append(el('thead', {}, el('tr', {}, [...cab, 'Valor', ...(comPct ? ['% do total'] : []), 'Registros'].map(c => el('th', {}, c)))));
     tab.append(el('tbody', {}, linhas.map(x => el('tr', {},
       el('td', {}, x._periodo), plano.linha ? el('td', {}, x._linha) : null, plano.coluna ? el('td', {}, x._coluna) : null,
-      el('td', { class: 'num' }, fmtEst(x.valor)), el('td', { class: 'num' }, num(x.registros))))));
+      el('td', { class: 'num' }, fmtEst(x.valor)), comPct ? el('td', { class: 'num' }, x._pct === null ? '—' : pct(x._pct, 1)) : null, el('td', { class: 'num' }, num(x.registros))))));
   }
-  saida.append(el('div', { class: 'rolagem' }, tab));
+  const caixaTab = el('div', { class: 'rolagem' }, tab);
+  if (plano.linha && plano.coluna) {
+    // Tabela cruzada: grupos da primeira separação nas linhas, da segunda nas colunas.
+    const campo = plano.amostral ? 'estimativa' : 'valor';
+    const cols = [...new Set(linhas.map(x => x._coluna))];
+    const chaves = [...new Set(linhas.map(x => `${x._periodo}\u0001${x._linha}`))];
+    const mapa = new Map(linhas.map(x => [`${x._periodo}\u0001${x._linha}\u0001${x._coluna}`, x]));
+    const cruz = el('table', { class: 'dados', id: 'ex-cruzada' },
+      el('thead', {}, el('tr', {}, ['Período', plano.nomeLinha || 'Linha', ...cols].map(c => el('th', {}, c)))),
+      el('tbody', {}, chaves.map(k => { const [p, l] = k.split('\u0001'); return el('tr', {}, el('td', {}, p), el('td', {}, l),
+        cols.map(c => { const x = mapa.get(`${k}\u0001${c}`); return el('td', { class: `num ${x && x._aviso ? x._aviso.classe : ''}`, title: x && plano.amostral ? `IC 95%: ${fmtEst(x.ic95_inf)} a ${fmtEst(x.ic95_sup)} · CV ${pct(x.cv, 1)} · n ${num(x.n_amostra)}` : '' }, x ? fmtEst(x[campo]) : '—'); })); })));
+    const caixaCruz = el('div', { class: 'rolagem' }, cruz, plano.amostral ? el('p', { class: 'nota' }, 'Passe o mouse numa célula para ver IC 95%, CV e n. A tabela completa tem todas as colunas.') : null);
+    caixaCruz.hidden = true;
+    const seg = el('div', { class: 'seg', id: 'ex-tabelas', role: 'group', 'aria-label': 'Formato da tabela' });
+    const bt = (txt, cruzada) => { const b = el('button', { type: 'button', class: 'seg-b', 'aria-pressed': String(!cruzada) }, txt);
+      b.addEventListener('click', () => { caixaCruz.hidden = !cruzada; caixaTab.hidden = cruzada; for (const o of seg.children) o.setAttribute('aria-pressed', String(o === b)); }); return b; };
+    seg.append(bt('Tabela completa', false), bt(`Tabela cruzada (${(plano.nomeLinha || 'linhas').toLowerCase()} × ${(plano.nomeColuna || 'colunas').toLowerCase()})`, true));
+    saida.append(seg, caixaTab, caixaCruz);
+  } else saida.append(caixaTab);
+
   if (plano.amostral) saida.append(el('p', { class: 'nota' }, 'n amostral = pessoas na amostra que entram no denominador. Linhas em amarelo: CV entre 15% e 30%; em vermelho: CV acima de 30%.'));
 
-  desenharGrafico(graf, linhas, plano).catch(e => { graf.innerHTML = ''; graf.append(el('p', { class: 'nota' }, 'Gráfico indisponível: ' + esc(e.message || e))); });
+  desenhar();
 }

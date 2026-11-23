@@ -202,3 +202,9 @@ button:disabled { opacity: 0.55; cursor: progress; }
   .frase-palavra { text-align: left; padding-top: 0; }
   .frase-controles select { width: 100%; }
 }
+
+.seg { display: inline-flex; flex-wrap: wrap; gap: 0; margin: 10px 0 6px; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg-b { background: var(--card); color: var(--fg); border: 0; border-right: 1px solid var(--line); border-radius: 0; padding: 5px 12px; font-size: 0.86rem; cursor: pointer; }
+.seg-b:last-child { border-right: 0; }
+.seg-b[aria-pressed="true"] { background: var(--serie-1); color: #fff; }
+.dic-usar { font-size: 0.88rem; margin: 6px 0 2px; }

@@ -42,7 +42,7 @@ export async function desenharGrafico(alvo, linhas, plano) {
   let dados = linhas.filter(x => Number.isFinite(x[campo])).map(x => ({
     periodo: x._periodo, serie: serieDe(x), linha: x._linha || 'Município do Rio', coluna: x._coluna || null,
     y: x[campo] * escala,
-    y1: plano.amostral ? x.ic95_inf * escala : null, y2: plano.amostral ? x.ic95_sup * escala : null,
+    y1: plano.amostral ? (x[campo] >= 0 ? Math.max(0, x.ic95_inf) : x.ic95_inf) * escala : null, y2: plano.amostral ? x.ic95_sup * escala : null,
     cv: x.cv, aviso: x._aviso ? x._aviso.texto : '', n: plano.amostral ? x.n_amostra : x.registros,
   }));
   if (!dados.length) return;
@@ -52,7 +52,7 @@ export async function desenharGrafico(alvo, linhas, plano) {
   const titulo = d => `${d.serie}\n${d.periodo}: ${fmtY(d.y)}${d.y1 !== null ? `\nIC 95%: ${fmtY(d.y1)} a ${fmtY(d.y2)}\nCV: ${num(d.cv * 100, 1)}%${d.aviso ? ` (${d.aviso})` : ''}` : ''}\n${plano.amostral ? 'n amostral' : 'registros'}: ${num(d.n)}`;
   const rotuloEixo = plano.amostral ? (unidade ? 'estimativa (%)' : 'estimativa') : (plano.medida === 'contagem' ? 'contagem' : 'valor');
   const notas = [];
-  let fig;
+  let fig, legenda = [];
 
   if (periodos.length > 1) {
     let series = [...new Set(dados.map(d => d.serie))];
@@ -76,7 +76,9 @@ export async function desenharGrafico(alvo, linhas, plano) {
         const tem = new Set(dados.filter(d => d.serie === s).map(d => d.x));
         for (let a = a0; a <= a1; a++) if (!tem.has(a)) faltam.push({ x: a, y: NaN, y1: NaN, y2: NaN, serie: s, periodo: String(a) });
       }
-      if (faltam.length) notas.push(`Sem dado publicado em ${[...new Set(faltam.map(f => f.x))].join(', ')}: a linha é interrompida nesses anos.`);
+      const semNenhum = [...new Set(faltam.map(f => f.x))].filter(a => !dados.some(d => d.x === a));
+      if (semNenhum.length) notas.push(`Sem dado publicado em ${semNenhum.join(', ')}: a linha é interrompida nesses anos.`);
+      else if (faltam.length) notas.push('Nem todo grupo aparece em todos os anos; onde falta, a linha desse grupo é interrompida.');
       dados = dados.concat(faltam).sort((p, q) => p.x - q.x);
       escalaX = { type: 'linear', label: null, tickFormat: v => String(v), ticks: Math.min(a1 - a0 + 1, Math.max(4, Math.floor(largura / 60))) };
     } else {
@@ -84,6 +86,9 @@ export async function desenharGrafico(alvo, linhas, plano) {
       escalaX = { type: 'point', domain: periodos, label: null, ticks: periodos.filter((_, i) => i % passo === 0), tickRotate: periodos.length > 8 ? -35 : 0 };
     }
     const validos = dados.filter(d => Number.isFinite(d.y));
+    const quebra = anual && plano.tabela && plano.tabela.chave === 'rais_vinculos' && validos.some(d => d.x < 2023) && validos.some(d => d.x >= 2023);
+    if (quebra) notas.push('Linha tracejada: a partir de 2023 a RAIS passou a ser coletada pelo eSocial, e a série não é diretamente comparável com os anos anteriores.');
+    if (series.length > 1) legenda = series.map((n, i) => ({ nome: n, cor: c.series[i] }));
     fig = Plot.plot({
       width: largura, height: 360, marginLeft: 64, marginBottom: 48,
       style: { background: 'transparent', color: c.texto, fontSize: '12px' },
@@ -91,6 +96,8 @@ export async function desenharGrafico(alvo, linhas, plano) {
       y: { grid: true, label: rotuloEixo, zero: !plano.amostral || plano.ehProporcao, tickFormat: v => num(v, Math.abs(v) >= 100 || Number.isInteger(v) ? 0 : 1) },
       color: { domain: series, range: c.series.slice(0, series.length), legend: series.length > 1 },
       marks: [
+        quebra ? Plot.ruleX([2022.5], { stroke: c.mudo, strokeDasharray: '3,3' }) : null,
+        quebra ? Plot.text([{ x: 2022.5 }], { x: 'x', frameAnchor: 'top', text: () => 'eSocial →', textAnchor: 'start', dx: 5, fill: c.mudo }) : null,
         plano.amostral ? Plot.areaY(dados, { x: 'x', y1: 'y1', y2: 'y2', fill: 'serie', fillOpacity: 0.14, curve: 'linear' }) : null,
         Plot.lineY(dados, { x: 'x', y: 'y', stroke: 'serie', strokeWidth: 2 }),
         Plot.dot(validos, { x: 'x', y: 'y', fill: 'serie', r: 3, stroke: c.fundo, strokeWidth: 1 }),
@@ -99,34 +106,136 @@ export async function desenharGrafico(alvo, linhas, plano) {
     });
     if (plano.amostral) notas.push('Faixa sombreada: IC 95%.');
   } else {
-    if (plano.ordenarBarras && !dados.some(d => d.coluna)) dados.sort((a, b) => b.y - a.y);
-    if (dados.length > MAX_BARRAS) {
-      notas.push(`O gráfico mostra as ${MAX_BARRAS} ${plano.ordenarBarras ? 'maiores' : 'primeiras'} de ${dados.length} barras; a tabela tem todas.`);
-      dados = dados.slice(0, MAX_BARRAS);
-    }
     const temColuna = dados.some(d => d.coluna);
-    const teto = (largura < 500 ? 160 : 300) - 14;
+    const total = l => dados.filter(d => d.linha === l).reduce((a, d) => a + d.y, 0);
+    if (plano.ordenarBarras) {
+      const tot = new Map([...new Set(dados.map(d => d.linha))].map(l => [l, total(l)]));
+      dados.sort((a, b) => tot.get(b.linha) - tot.get(a.linha));
+    }
+    let linhasUnicas = [...new Set(dados.map(d => d.linha))];
+    const maxLinhas = temColuna ? 30 : MAX_BARRAS;
+    if (linhasUnicas.length > maxLinhas) {
+      notas.push(`O gráfico mostra ${maxLinhas} de ${linhasUnicas.length} grupos (${plano.ordenarBarras ? 'os maiores' : 'os primeiros'}); a tabela tem todos.`);
+      linhasUnicas = linhasUnicas.slice(0, maxLinhas);
+      const fica = new Set(linhasUnicas);
+      dados = dados.filter(d => fica.has(d.linha));
+    }
+    let colunas = [...new Set(dados.map(d => d.coluna))];
+    let tipo = temColuna ? (plano.tipoGrafico || (colunas.length <= MAX_SERIES ? 'agrupadas' : 'paineis')) : 'barras';
+    if (temColuna && tipo !== 'paineis' && colunas.length > MAX_SERIES) {
+      tipo = 'paineis';
+      notas.push(`São ${colunas.length} grupos na segunda separação, mais do que as ${MAX_SERIES} cores do gráfico: cada um ficou num painel.`);
+    }
+    if ((tipo === 'empilhadas' || tipo === 'cem') && !plano.aditivo) tipo = 'agrupadas';
+    const teto = (largura < 500 ? 150 : 300) - 14;
     const rotY = v => cortarPx(cortar(v), teto);
-    const linhasUnicas = [...new Set(dados.map(d => d.linha))];
     const opac = d => (/não confiável/.test(d.aviso) ? 0.35 : /cautela/.test(d.aviso) ? 0.65 : 1);
-    const alturaFacet = Math.max(28, linhasUnicas.length * 22 + 12);
-    const facetas = temColuna ? [...new Set(dados.map(d => d.coluna))].length : 1;
-    fig = Plot.plot({
-      width: largura, height: Math.min(2400, facetas * alturaFacet + 70), marginBottom: 42,
-      marginLeft: Math.max(90, Math.max(...linhasUnicas.map(s => larguraTexto(rotY(s)))) + 14), marginRight: temColuna ? Math.min(140, largura * 0.22) : 24,
-      style: { background: 'transparent', color: c.texto, fontSize: '12px' },
-      x: { grid: true, label: rotuloEixo, labelAnchor: 'right', zero: true, tickFormat: v => num(v, Math.abs(v) >= 100 || Number.isInteger(v) ? 0 : 1) },
-      y: { label: null, domain: linhasUnicas, tickFormat: v => rotY(v) },
-      fy: temColuna ? { label: null, tickFormat: v => cortar(v, 22) } : undefined,
-      marks: [
-        Plot.barX(dados, { x: 'y', y: 'linha', fy: temColuna ? 'coluna' : undefined, fill: c.series[0], fillOpacity: opac, rx: 2, insetTop: 2, insetBottom: 2 }),
-        plano.amostral ? Plot.ruleY(dados, { y: 'linha', fy: temColuna ? 'coluna' : undefined, x1: 'y1', x2: 'y2', stroke: c.texto, strokeWidth: 1.5 }) : null,
-        Plot.ruleX([0], { stroke: c.mudo }),
-        Plot.tip(dados, Plot.pointerY({ x: 'y', y: 'linha', fy: temColuna ? 'coluna' : undefined, title: titulo })),
-      ],
-    });
-    if (plano.amostral) notas.push('Traço: IC 95%. Barras mais claras: CV entre 15% e 30% (meio-tom) ou acima de 30% (bem claras).');
+    const margemEsq = Math.max(90, Math.max(...linhasUnicas.map(s => larguraTexto(rotY(s)))) + 14);
+    const estilo = { background: 'transparent', color: c.texto, fontSize: '12px' };
+    const eixoX = { grid: true, label: rotuloEixo, labelAnchor: 'right', zero: true, tickFormat: v => num(v, Math.abs(v) >= 100 || Number.isInteger(v) ? 0 : 1) };
+    const cor = { domain: colunas, range: c.series.slice(0, colunas.length), legend: true };
+    if (tipo === 'agrupadas') {
+      const alturaGrupo = colunas.length * 15 + 10;
+      fig = Plot.plot({
+        width: largura, height: Math.min(4000, linhasUnicas.length * alturaGrupo + 70), marginBottom: 42, marginLeft: margemEsq, marginRight: 24,
+        style: estilo, x: eixoX, color: cor,
+        y: { axis: null, domain: colunas },
+        fy: { label: null, axis: 'left', domain: linhasUnicas, tickFormat: v => rotY(v), padding: 0.12 },
+        marks: [
+          Plot.barX(dados, { x: 'y', y: 'coluna', fy: 'linha', fill: 'coluna', fillOpacity: opac, rx: 2, insetTop: 1, insetBottom: 1 }),
+          plano.amostral ? Plot.ruleY(dados, { y: 'coluna', fy: 'linha', x1: 'y1', x2: 'y2', stroke: c.texto, strokeWidth: 1.2 }) : null,
+          Plot.ruleX([0], { stroke: c.mudo }),
+          Plot.tip(dados, Plot.pointerY({ x: 'y', y: 'coluna', fy: 'linha', title: titulo })),
+        ],
+      });
+      legenda = colunas.map((n, i) => ({ nome: n, cor: c.series[i] }));
+    } else if (tipo === 'empilhadas' || tipo === 'cem') {
+      const cem = tipo === 'cem';
+      const pilha = extra => Plot.stackX({ offset: cem ? 'normalize' : null, order: colunas }, { x: 'y', y: 'linha', z: 'coluna', ...extra });
+      const parte = d => `${d.serie}\n${d.periodo}: ${fmtY(d.y)} (${num(100 * d.y / (total(d.linha) || 1), 1)}% de ${d.linha})`;
+      fig = Plot.plot({
+        width: largura, height: Math.min(2400, linhasUnicas.length * 26 + 70), marginBottom: 42, marginLeft: margemEsq, marginRight: 24,
+        style: estilo, color: cor,
+        x: cem ? { grid: true, label: '% de cada grupo', labelAnchor: 'right', tickFormat: v => `${Math.round(v * 100)}%` } : eixoX,
+        y: { label: null, domain: linhasUnicas, tickFormat: v => rotY(v) },
+        marks: [
+          Plot.barX(dados, pilha({ fill: 'coluna', insetLeft: 1, insetRight: 1, insetTop: 2, insetBottom: 2 })),
+          Plot.ruleX([0], { stroke: c.mudo }),
+          Plot.tip(dados, Plot.pointerY(pilha({ title: parte }))),
+        ],
+      });
+      legenda = colunas.map((n, i) => ({ nome: n, cor: c.series[i] }));
+      if (plano.amostral) notas.push('Barras empilhadas não mostram o IC 95%; ele está na tabela e nas barras lado a lado.');
+    } else {
+      const alturaFacet = Math.max(28, linhasUnicas.length * 22 + 12);
+      fig = Plot.plot({
+        width: largura, height: Math.min(4000, (temColuna ? colunas.length : 1) * alturaFacet + 70), marginBottom: 42,
+        marginLeft: margemEsq, marginRight: temColuna ? Math.min(140, largura * 0.22) : 24,
+        style: estilo, x: eixoX,
+        y: { label: null, domain: linhasUnicas, tickFormat: v => rotY(v) },
+        fy: temColuna ? { label: null, tickFormat: v => cortar(v, 22) } : undefined,
+        marks: [
+          Plot.barX(dados, { x: 'y', y: 'linha', fy: temColuna ? 'coluna' : undefined, fill: c.series[0], fillOpacity: opac, rx: 2, insetTop: 2, insetBottom: 2 }),
+          plano.amostral ? Plot.ruleY(dados, { y: 'linha', fy: temColuna ? 'coluna' : undefined, x1: 'y1', x2: 'y2', stroke: c.texto, strokeWidth: 1.5 }) : null,
+          Plot.ruleX([0], { stroke: c.mudo }),
+          Plot.tip(dados, Plot.pointerY({ x: 'y', y: 'linha', fy: temColuna ? 'coluna' : undefined, title: titulo })),
+        ],
+      });
+    }
+    if (plano.amostral && tipo !== 'empilhadas' && tipo !== 'cem') notas.push('Traço: IC 95%. Barras mais claras: CV entre 15% e 30% (meio-tom) ou acima de 30% (bem claras).');
   }
   alvo.append(fig);
   for (const n of notas) alvo.append(el('p', { class: 'nota' }, n));
+  return { svg: fig.tagName.toLowerCase() === 'svg' ? fig : fig.querySelector(':scope > svg'), legenda, fundo: c.fundo, texto: c.texto };
+}
+
+// Tipos de gráfico que fazem sentido para o resultado (o primeiro é o padrão).
+export function tiposGrafico(plano, linhas) {
+  const varios = new Set(linhas.map(x => x._periodo)).size > 1;
+  if (varios || !plano.coluna) return [];
+  const n = new Set(linhas.map(x => x._coluna)).size;
+  const t = [];
+  if (n <= MAX_SERIES) t.push({ id: 'agrupadas', nome: 'Barras lado a lado' });
+  if (n <= MAX_SERIES && plano.aditivo) t.push({ id: 'empilhadas', nome: 'Empilhadas' }, { id: 'cem', nome: 'Empilhadas em 100%' });
+  t.push({ id: 'paineis', nome: 'Um painel por grupo' });
+  return t;
+}
+
+// PNG do gráfico: título e legenda desenhados no canvas, acima do SVG do Plot.
+export async function baixarPNG(g, titulo, nome) {
+  if (!g || !g.svg) return;
+  const W = g.svg.width.baseVal.value, H = g.svg.height.baseVal.value, k = 2, pad = 16;
+  const clone = g.svg.cloneNode(true);
+  clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  for (const t of clone.querySelectorAll('[aria-label="tip"]')) t.remove();
+  const img = new Image();
+  img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(new XMLSerializer().serializeToString(clone));
+  await img.decode();
+  const cv = document.createElement('canvas');
+  const x = cv.getContext('2d');
+  x.font = '600 15px system-ui, sans-serif';
+  const linhasT = [];
+  let atual = '';
+  for (const p of String(titulo || '').replace(/^./, ch => ch.toUpperCase()).split(' ')) {
+    if (x.measureText(atual + ' ' + p).width > W - 2 * pad && atual) { linhasT.push(atual); atual = p; } else atual = atual ? atual + ' ' + p : p;
+  }
+  if (atual) linhasT.push(atual);
+  const hLeg = g.legenda.length ? 24 : 0;
+  const topo = pad + linhasT.length * 20 + hLeg + 6;
+  cv.width = (W + 2 * pad) * k; cv.height = (H + topo + pad + 14) * k;
+  x.scale(k, k);
+  x.fillStyle = g.fundo || '#fff'; x.fillRect(0, 0, W + 2 * pad, H + topo + pad + 14);
+  x.fillStyle = g.texto || '#000'; x.font = '600 15px system-ui, sans-serif'; x.textBaseline = 'top';
+  linhasT.forEach((l, i) => x.fillText(l, pad, pad + i * 20));
+  x.font = '12px system-ui, sans-serif';
+  let lx = pad;
+  for (const l of g.legenda) {
+    x.fillStyle = l.cor; x.fillRect(lx, pad + linhasT.length * 20 + 6, 12, 12);
+    x.fillStyle = g.texto || '#000'; x.fillText(l.nome, lx + 16, pad + linhasT.length * 20 + 5);
+    lx += 16 + x.measureText(l.nome).width + 14;
+  }
+  x.drawImage(img, pad, topo, W, H);
+  x.font = '11px system-ui, sans-serif'; x.fillText('Fonte: microdados do município do Rio, ottoboop.github.io/pnad-rais-rio', pad, topo + H + 2);
+  const a = document.createElement('a');
+  a.download = nome; a.href = cv.toDataURL('image/png'); a.click();
 }
