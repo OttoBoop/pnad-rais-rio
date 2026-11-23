@@ -12,37 +12,29 @@
 <body>
 <header class="topo">
   <div class="topo-linha">
-    <a class="marca" href="#inicio"><b>pnad-rais-rio</b><span>microdados do município do Rio</span></a>
+    <a class="marca" href="#consultar"><b>pnad-rais-rio</b><span>microdados do município do Rio</span></a>
     <div class="status">
       <span id="motor-status" class="pilula" role="status">Motor: carregando…</span>
       <button type="button" id="medidor" class="pilula medidor" aria-expanded="false" aria-controls="medidor-detalhe" title="Bytes de dados baixados pela última consulta e na sessão">Dados baixados: nenhuma consulta ainda</button>
     </div>
   </div>
   <nav class="nav" aria-label="Seções">
-    <a href="#inicio" data-rota="inicio">Início</a>
-    <a href="#explorar" data-rota="explorar">Explorar</a>
-    <a href="#sql" data-rota="sql">SQL</a>
+    <a href="#consultar" data-rota="consultar">Consultar</a>
     <a href="#dicionario" data-rota="dicionario">Dicionário</a>
     <a href="#metodologia" data-rota="metodologia">Metodologia</a>
     <a href="#arquivos" data-rota="arquivos">Arquivos</a>
+    <a href="#sql" data-rota="sql">SQL (avançado)</a>
   </nav>
   <div id="medidor-detalhe" class="medidor-detalhe" hidden></div>
 </header>
 
 <main id="conteudo">
-  <p class="aviso" id="aviso-parcial"><strong>Atualização de 18/11/2026.</strong> PNAD Contínua e RAIS completas: PNAD trimestral de 2012T1 a 2026T3 e anuais por visita (1ª visita: 2012–2019 e 2022–2025; 5ª visita: 2016–2025); RAIS Vínculos e RAIS Estabelecimentos de 2006 a 2025, mais o arquivo Legado de 2023 à parte. Em andamento: só a validação final da RAIS contra os totais publicados pelo MTE. A <a href="demo/">demonstração</a> continua no ar.</p>
-  <section id="pag-inicio" data-pagina="inicio" hidden>
+  <section id="pag-inicio" data-pagina="consultar" hidden>
     <h1>PNAD Contínua e RAIS do município do Rio</h1>
-    <p class="lead">Microdados da PNAD Contínua (IBGE) e da RAIS (MTE), só do município do Rio de Janeiro, consultados no próprio navegador com SQL. Não há servidor de banco: o DuckDB-WASM lê os arquivos Parquet por partes e baixa só as colunas e os blocos de que cada consulta precisa.</p>
-    <ul class="atalhos">
-      <li><a href="#explorar"><b>Explorar</b><span>cruzamentos prontos com IC 95%, CV e n (PNAD) ou contagens e remunerações (RAIS)</span></a></li>
-      <li><a href="#sql"><b>SQL</b><span>consulta livre, com macros de erro-padrão e exemplos</span></a></li>
-      <li><a href="#dicionario"><b>Dicionário</b><span>variáveis, categorias e anos disponíveis</span></a></li>
-      <li><a href="#metodologia"><b>Metodologia</b><span>recorte, pesos, variância, quebras de série e fontes</span></a></li>
-      <li><a href="#arquivos"><b>Arquivos</b><span>download de cada arquivo Parquet</span></a></li>
-    </ul>
-    <h2>Consultas prontas</h2>
-    <p class="mudo">Cada cartão roda agora, no seu navegador, sobre os microdados. Os anos são os últimos publicados nos manifestos. "Ver SQL" abre a consulta no editor para você mudar.</p>
+    <p class="lead">Monte a pergunta escolhendo nos menus e veja o gráfico e a tabela. Os dados são os microdados da PNAD Contínua (IBGE, 2012 a 2026) e da RAIS (MTE, 2006 a 2025), só do município do Rio de Janeiro. O <a href="#dicionario">Dicionário</a> explica cada variável.</p>
+    <div id="consultar-raiz"><p class="mudo">Carregando o motor de consulta…</p></div>
+    <h2>Mais consultas prontas</h2>
+    <p class="mudo">Cada cartão roda agora, no seu navegador, sobre os microdados. Os anos são os últimos publicados nos manifestos. "Ver SQL" abre a consulta no editor avançado.</p>
     <div class="prontas" id="prontas"><p class="mudo">Carregando o motor…</p></div>
     <div class="prontas-resultado" id="prontas-resultado"></div>
     <h2>Cobertura</h2>
@@ -59,14 +51,8 @@
     </ul>
   </section>
 
-  <section id="pag-explorar" data-pagina="explorar" hidden>
-    <h1>Explorar</h1>
-    <p class="mudo">Escolha a base, a medida, linhas, colunas, filtros e período. O SQL gerado fica no botão "Ver SQL".</p>
-    <div id="explorar-raiz"><p class="mudo">Carregando o motor…</p></div>
-  </section>
-
   <section id="pag-sql" data-pagina="sql" hidden>
-    <h1>SQL</h1>
+    <h1>SQL (avançado)</h1>
     <p class="mudo">DuckDB (dialeto do DuckDB 1.4). Os exemplos abaixo, por base, rodam na hora ou vão para o editor. Ctrl+Enter executa. Os nomes das tabelas e dos macros estão em "Tabelas, views e macros" e na tabela <code>catalogo</code>.</p>
     <div id="sql-raiz"><p class="mudo">Carregando o motor…</p></div>
   </section>

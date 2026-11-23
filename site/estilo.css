@@ -169,3 +169,36 @@ button:disabled { opacity: 0.55; cursor: progress; }
   .explorar-form { grid-template-columns: 1fr; padding: 10px; }
   h1 { font-size: 1.3rem; }
 }
+
+/* Consultar: a frase com menus */
+.chips-titulo { margin: 6px 0 4px; font-size: 0.88rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.chip { background: var(--card); color: var(--fg); border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px; font-size: 0.86rem; cursor: pointer; }
+.chip:hover { border-color: var(--serie-1); }
+.frase { display: flex; flex-direction: column; gap: 12px; padding: 16px; }
+.frase-linha { display: grid; grid-template-columns: 128px minmax(0, 1fr); gap: 4px 12px; align-items: start; }
+.frase-palavra { font-weight: 700; font-size: 1.02rem; padding-top: 6px; text-align: right; }
+.frase-controles { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; min-width: 0; }
+.frase-controles select, .frase-controles .busca-opcao { width: auto; max-width: 100%; min-width: 0; font-size: 0.98rem; padding: 6px 8px; }
+.frase-controles .nota { flex-basis: 100%; margin: 0; }
+.frase-controles .check { flex-basis: 100%; }
+.frase-conds { display: flex; flex-direction: column; gap: 8px; flex-basis: 100%; min-width: 0; }
+.frase-conds:empty { display: none; }
+.frase-cond { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; min-width: 0; }
+.frase-e { color: var(--muted); font-weight: 600; }
+.seletor { display: inline-flex; flex-wrap: wrap; gap: 6px; min-width: 0; max-width: 100%; }
+.aviso-leve { color: #9a5b00; }
+@media (prefers-color-scheme: dark) { .aviso-leve { color: #e0a84a; } }
+.multi { position: relative; max-width: 100%; }
+.multi > summary { list-style: none; cursor: pointer; border: 1px solid var(--line); border-radius: 6px; padding: 6px 26px 6px 10px; background: var(--card); min-width: 110px; position: relative; font-size: 0.98rem; }
+.multi > summary::-webkit-details-marker { display: none; }
+.multi > summary::after { content: "▾"; position: absolute; right: 8px; color: var(--muted); }
+.multi > summary.vazio { color: var(--muted); border-style: dashed; }
+.multi-painel { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; width: min(380px, 86vw); max-height: 320px; overflow: auto; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 8px; box-shadow: 0 6px 22px rgba(0,0,0,0.18); }
+.multi-painel .busca-opcao { width: 100%; margin-bottom: 6px; }
+.multi-lista .check { padding: 3px 2px; }
+@media (max-width: 620px) {
+  .frase-linha { grid-template-columns: 1fr; }
+  .frase-palavra { text-align: left; padding-top: 0; }
+  .frase-controles select { width: 100%; }
+}

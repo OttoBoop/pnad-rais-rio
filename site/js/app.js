@@ -2,19 +2,19 @@
 import { carregarCatalogo } from './catalogo.js';
 import { Motor } from './motor.js';
 import { el, num, mb, segundos, faixasAnos } from './util.js';
-import { montarExplorar } from './explorar.js';
+import { montarConsultar } from './consultar.js';
 import { montarSQL } from './sql.js';
 import { montarDicionario } from './dicionario.js';
 import { montarProntas } from './prontas.js';
 
-const ROTAS = ['inicio', 'explorar', 'sql', 'dicionario', 'metodologia', 'arquivos'];
+const ROTAS = ['consultar', 'sql', 'dicionario', 'metodologia', 'arquivos'];
 const montadas = new Set();
 const ctx = { cat: null, motor: null, editor: null };
 window.__app = ctx;
 
 function rotaAtual() {
   const h = location.hash.replace(/^#/, '').split('?')[0];
-  return ROTAS.includes(h) ? h : 'inicio';
+  return ROTAS.includes(h) ? h : 'consultar';
 }
 
 function hospedagem(host) {
@@ -61,10 +61,15 @@ function montarInicio() {
   const faltam = cat.manifestos.filter(m => !m.ok);
   if (faltam.length) tab.after(el('p', { class: 'aviso' }, `Ainda sem dados: ${faltam.map(m => m.nome.toUpperCase()).join(' e ')} (manifesto não publicado).`));
   ctx.motor.iniciar()
-    .then(() => { ctx.prontas = montarProntas(document.getElementById('prontas'), document.getElementById('prontas-resultado'), ctx); })
+    .then(() => {
+      try { ctx.consulta = montarConsultar(document.getElementById('consultar-raiz'), ctx); }
+      catch (e) { console.error(e); document.getElementById('consultar-raiz').append(el('p', { class: 'erro' }, `A tela de consulta não abriu: ${e.message || e}`)); }
+      ctx.prontas = montarProntas(document.getElementById('prontas'), document.getElementById('prontas-resultado'), ctx);
+    })
     .catch(e => {
       const g = document.getElementById('prontas');
       g.innerHTML = '';
+      document.getElementById('consultar-raiz').innerHTML = '';
       g.append(el('p', { class: 'erro' }, `O motor não carregou: ${e.message || e}`));
     });
 }
@@ -94,24 +99,25 @@ function mostrarRota() {
   for (const a of document.querySelectorAll('.nav a')) a.classList.toggle('ativa', a.dataset.rota === r);
   if (!ctx.cat) return;
   if (!montadas.has(r)) {
-    if (r === 'inicio') { montarInicio(); montadas.add(r); }
+    if (r === 'consultar') { montarInicio(); montadas.add(r); }
     if (r === 'arquivos') { montarArquivos(); montadas.add(r); }
     if (r === 'dicionario') { montarDicionario(document.getElementById('dicionario-raiz'), ctx); montadas.add(r); }
-    if (r === 'explorar' || r === 'sql') {
+    if (r === 'sql') {
       montadas.add(r);
       ctx.motor.iniciar().then(() => {
-        if (r === 'explorar') montarExplorar(document.getElementById('explorar-raiz'), ctx);
-        else ctx.editor = montarSQL(document.getElementById('sql-raiz'), ctx);
+        ctx.editor = montarSQL(document.getElementById('sql-raiz'), ctx);
       }).catch(e => {
         document.getElementById(`${r}-raiz`).innerHTML = '';
         document.getElementById(`${r}-raiz`).append(el('p', { class: 'erro' }, `O motor não carregou: ${e.message || e}`));
       });
     }
+  } else if (r === 'consultar' && ctx.consulta && /^#consultar\?/.test(location.hash)) {
+    ctx.consulta.aoHash();
   } else if (r === 'sql' && ctx.editor) {
     const m = location.hash.match(/^#sql\?q=(.*)$/);
     if (m) { try { ctx.editor.definir(decodeURIComponent(m[1])); } catch { /* hash inválido */ } }
   }
-  if (r !== 'inicio') window.scrollTo(0, 0);
+  if (r !== 'consultar') window.scrollTo(0, 0);
 }
 
 ctx.abrirNoEditor = sql => {

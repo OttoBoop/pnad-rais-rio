@@ -99,8 +99,9 @@ export async function desenharGrafico(alvo, linhas, plano) {
     });
     if (plano.amostral) notas.push('Faixa sombreada: IC 95%.');
   } else {
+    if (plano.ordenarBarras && !dados.some(d => d.coluna)) dados.sort((a, b) => b.y - a.y);
     if (dados.length > MAX_BARRAS) {
-      notas.push(`O gráfico mostra as ${MAX_BARRAS} primeiras de ${dados.length} barras; a tabela tem todas.`);
+      notas.push(`O gráfico mostra as ${MAX_BARRAS} ${plano.ordenarBarras ? 'maiores' : 'primeiras'} de ${dados.length} barras; a tabela tem todas.`);
       dados = dados.slice(0, MAX_BARRAS);
     }
     const temColuna = dados.some(d => d.coluna);
